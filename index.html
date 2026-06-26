@@ -9,190 +9,213 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; background: #F5F5F7; margin: 0; min-height: 100vh; }
-
-        .app {
-            width: 100%;
-            min-height: 100vh;
-            background: #F5F5F7;
-            position: relative;
-        }
-
-        @media (min-width: 1024px) {
-            .app.auth .screen.active { margin-left: 260px; }
-        }
-
-        .screen { display: none; min-height: 100vh; flex-direction: column; }
-        .screen.active { display: flex; animation: slideUp 0.2s ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Inputs */
-        .inp {
-            width: 100%; padding: 13px 16px;
-            border: 1.5px solid #E5E5EA; border-radius: 12px;
-            font-size: 15px; font-family: 'Inter', sans-serif;
-            outline: none; background: white; color: #1D1D1F;
-            transition: border-color 0.15s, box-shadow 0.15s;
-            appearance: none;
-        }
-        .inp:focus { border-color: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }
-
-        /* Buttons */
-        .btn-p {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            width: 100%; padding: 14px;
-            background: #16A34A; color: white;
-            border-radius: 12px; font-weight: 600; font-size: 15px;
-            border: none; cursor: pointer; font-family: 'Inter', sans-serif;
-            transition: all 0.15s;
-        }
-        .btn-p:hover { background: #15803D; }
-        .btn-p:active { transform: scale(0.98); }
-
-        .btn-s {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            width: 100%; padding: 13px;
-            background: white; color: #3A3A3C;
-            border-radius: 12px; font-weight: 600; font-size: 14px;
-            border: 1.5px solid #E5E5EA; cursor: pointer; font-family: 'Inter', sans-serif;
-        }
-
-        /* Cards */
-        .card { background: white; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03); }
-        .client-card { background: white; border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.15s; border: 1px solid #F5F5F7; }
-        .client-card:hover { box-shadow: 0 4px 14px rgba(22,163,74,0.12); border-color: #BBF7D0; transform: translateY(-1px); }
-
-        /* Bottom nav (mobile) */
-        .bnav {
-            position: fixed; bottom: 0; left: 0;
-            width: 100%;
-            background: white; border-top: 1px solid #E5E5EA;
-            display: none; z-index: 100;
-            padding: 8px 0 14px;
-        }
-        .bnav-item {
-            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-            cursor: pointer; padding: 4px 0; color: #86868B;
-            font-size: 10px; font-weight: 600; border: none; background: none;
-            font-family: 'Inter', sans-serif; transition: color 0.15s;
-        }
-        .bnav-item i { font-size: 19px; }
-        .bnav-item.active { color: #16A34A; }
-
-        /* Sidebar (desktop) */
-        .sidebar { display: none; }
-        .sidebar-item {
-            display: flex; align-items: center; gap: 12px; width: 100%;
-            padding: 11px 14px; border-radius: 10px; border: none; background: none;
-            color: #6E6E73; font-weight: 600; font-size: 14px; text-align: left;
-            cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s;
-        }
-        .sidebar-item i { font-size: 17px; width: 20px; text-align: center; }
-        .sidebar-item:hover { background: #F5F5F7; color: #1D1D1F; }
-        .sidebar-item.active { background: #F0FDF4; color: #16A34A; }
-
-        @media (min-width: 1024px) {
-            .bnav { display: none !important; }
-            .app.auth .sidebar {
-                display: flex; flex-direction: column; justify-content: space-between;
-                position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
-                background: white; border-right: 1px solid #E5E5EA;
-                padding: 24px 16px; z-index: 50;
-            }
-            .ph { padding: 24px 32px 16px; }
-            .sb { padding: 24px 32px 64px; }
-            .ph > *, .sb > * { max-width: 1200px; margin-left: auto; margin-right: auto; }
-            .dash-hero { padding-left: 32px; padding-right: 32px; }
-            .dash-hero > * { max-width: 1200px; margin-left: auto; margin-right: auto; }
-        }
-
-        /* Stat row (dashboard floating cards) */
-        .stat-row { margin: -40px 14px 0; display: flex; gap: 10px; position: relative; z-index: 5; }
-        @media (min-width: 1024px) {
-            .stat-row { max-width: 1200px; margin: -40px auto 0; padding: 0 32px; gap: 16px; }
-        }
-
-        /* Auth screens */
-        .auth-brand {
-            background: linear-gradient(145deg,#052E16 0%,#15803D 55%,#22C55E 100%);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 42vh; padding: 40px 24px 56px; text-align: center;
-        }
-        .auth-brand.auth-brand-desktop { display: none; }
-        .auth-form-panel { background: white; border-radius: 26px 26px 0 0; margin-top: -26px; flex: 1; padding: 28px 24px 40px; }
-        @media (min-width: 1024px) {
-            #screen-login.active, #screen-register.active { flex-direction: row; }
-            .auth-brand { flex: 0 0 50%; min-height: 100vh; border-radius: 0; padding: 60px; }
-            .auth-brand.auth-brand-desktop { display: flex; }
-            .auth-form-panel {
-                flex: 1; border-radius: 0; margin-top: 0; min-height: 100vh;
-                display: flex; align-items: center; justify-content: center; padding: 40px; overflow-y: auto;
-            }
-            .auth-form-inner { max-width: 420px; width: 100%; }
-        }
-
-        /* Page header */
-        .ph { background: white; padding: 16px 20px 12px; border-bottom: 1px solid #F5F5F7; position: sticky; top: 0; z-index: 10; }
-
-        /* Scroll body */
-        .sb { flex: 1; overflow-y: auto; padding: 16px 16px 96px; }
-
-        /* Badges */
-        .badge { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-        .badge-a { background: #DCFCE7; color: #15803D; }
-        .badge-b { background: #FEF9C3; color: #92400E; }
-        .badge-c { background: #FEE2E2; color: #991B1B; }
-
-        /* Section label */
-        .slabel { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #86868B; margin-bottom: 10px; }
-
-        /* Chips */
-        .chip { padding: 7px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; border: none; background: #F5F5F7; color: #6E6E73; transition: all 0.15s; font-family: 'Inter', sans-serif; }
-        .chip.active { background: #16A34A; color: white; }
-
-        /* Margin indicator */
-        .mi { border-radius: 10px; padding: 12px 14px; }
-        .mi-g { background: #F0FDF4; border-left: 3px solid #22C55E; color: #166534; }
-        .mi-y { background: #FEFCE8; border-left: 3px solid #EAB308; color: #854D0E; }
-        .mi-r { background: #FFF1F2; border-left: 3px solid #F43F5E; color: #9F1239; }
-
-        /* Overdue */
-        .overdue { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
-
-        /* Search bar */
-        .sbar { display: flex; align-items: center; background: white; border-radius: 12px; border: 1.5px solid #E5E5EA; padding: 0 14px; gap: 10px; }
-        .sbar input { flex: 1; border: none; outline: none; padding: 13px 0; font-size: 14px; font-family: 'Inter', sans-serif; color: #1D1D1F; background: transparent; }
-
-        /* qty */
-        .qbtn { width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid #E5E5EA; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: #16A34A; font-weight: 600; line-height: 1; font-family: 'Inter', sans-serif; }
-
-        /* Toast */
-        .toast { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%) translateY(10px); background: #1D1D1F; color: white; padding: 11px 20px; border-radius: 30px; font-size: 13px; font-weight: 500; white-space: nowrap; z-index: 300; opacity: 0; transition: all 0.25s; pointer-events: none; }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-        /* Map */
-        .map-bg {
-            background: #F0FDF4; border-radius: 16px; height: 185px; position: relative; overflow: hidden;
-        }
-
-        /* Success */
-        .success-ring { width: 90px; height: 90px; border-radius: 50%; background: #DCFCE7; display: flex; align-items: center; justify-content: center; animation: popIn 0.45s cubic-bezier(0.175,0.885,0.32,1.275); }
-        @keyframes popIn { from { transform: scale(0); opacity:0; } to { transform: scale(1); opacity:1; } }
-
-        /* Route item */
-        .ri { display: flex; align-items: center; gap: 14px; background: white; border-radius: 14px; padding: 13px 16px; cursor: pointer; border: 1px solid #F5F5F7; transition: box-shadow 0.15s; }
-        .ri:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-
-        /* Stat card */
-        .sc { background: white; border-radius: 14px; padding: 14px 14px 12px; flex: 1; min-width: 0; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 <div class="app" id="app">
 
 <div class="toast" id="toast"></div>
+
+<!-- ========== CHAT DE SUPORTE (flutuante) ========== -->
+<button id="support-chat-fab" onclick="openSupportChat()" style="display:none;">
+    <i class="fas fa-headset"></i>
+</button>
+<div class="support-chat-panel" id="support-chat-panel">
+    <div class="sc-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;background:rgba(255,255,255,0.18);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-headset" style="color:white;font-size:14px;"></i></div>
+            <div><div style="font-size:14px;font-weight:700;color:white;">Suporte RepOS</div><div style="font-size:11px;color:rgba(255,255,255,0.75);">Geralmente responde em poucos minutos</div></div>
+        </div>
+        <button onclick="closeSupportChat()" style="width:28px;height:28px;background:rgba(255,255,255,0.15);border-radius:50%;border:none;cursor:pointer;color:white;"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="sc-body" id="sc-messages"></div>
+    <div class="sc-foot">
+        <input type="text" id="sc-input" placeholder="Escreva seu feedback ou dúvida..." onkeydown="if(event.key==='Enter')sendSupportChat()">
+        <button onclick="sendSupportChat()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<!-- ========== MENU "MAIS" ========== -->
+<div class="modal-overlay" id="modal-more">
+    <div class="modal-box" style="padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px 10px;">
+            <span style="font-size:13px;font-weight:700;color:#86868B;text-transform:uppercase;letter-spacing:.04em;">Menu</span>
+            <button onclick="closeMoreMenu()" style="width:30px;height:30px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('financeiro')"><i class="fas fa-sack-dollar" style="color:#16A34A;"></i><span>Financeiro</span></button>
+        <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('equipe')"><i class="fas fa-people-group" style="color:#16A34A;"></i><span>Equipe</span></button>
+        <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('rota')"><i class="fas fa-route" style="color:#16A34A;"></i><span>Rota</span></button>
+        <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('anotacoes')"><i class="fas fa-note-sticky" style="color:#16A34A;"></i><span>Anotações</span></button>
+        <button class="sidebar-item" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('config')"><i class="fas fa-gear" style="color:#16A34A;"></i><span>Configurações</span></button>
+        <div style="border-top:1px solid #F5F5F7;margin:6px 0;"></div>
+        <button class="sidebar-item" style="font-size:15px;padding:14px;color:#DC2626;" onclick="closeMoreMenu();logout()"><i class="fas fa-right-from-bracket"></i><span>Sair</span></button>
+    </div>
+</div>
+
+<!-- ========== LANDING (ÓRBITA) ========== -->
+<div class="screen" id="screen-landing">
+    <div style="background:rgba(255,255,255,0.85);backdrop-filter:blur(8px);border-bottom:1px solid #EEF0F2;padding:14px 20px;position:sticky;top:0;z-index:20;">
+        <div style="max-width:1180px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;background:linear-gradient(135deg,#111827,#374151);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(17,24,39,0.25);"><i class="fas fa-circle-nodes" style="color:white;font-size:16px;"></i></div>
+                <span style="font-size:19px;font-weight:800;color:#111827;letter-spacing:-0.5px;">Órbita</span>
+            </div>
+            <div class="hidden md:flex" style="gap:32px;align-items:center;">
+                <a href="#lp-servicos" style="font-size:14px;font-weight:600;color:#3A3A3C;text-decoration:none;">Serviços</a>
+                <a href="#lp-repos" style="font-size:14px;font-weight:600;color:#3A3A3C;text-decoration:none;">RepOS</a>
+                <a href="#lp-numeros" style="font-size:14px;font-weight:600;color:#3A3A3C;text-decoration:none;">Resultados</a>
+            </div>
+            <button onclick="showScreen('login')" style="padding:11px 20px;background:#111827;color:white;border-radius:10px;font-weight:700;font-size:13px;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:transform .15s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">Entrar <i class="fas fa-arrow-right" style="margin-left:4px;font-size:11px;"></i></button>
+        </div>
+    </div>
+
+    <!-- HERO -->
+    <div style="position:relative;overflow:hidden;background:#FAFBFC;padding:80px 20px 0;">
+        <div style="position:absolute;top:-120px;right:-100px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(22,163,74,0.18),transparent 70%);filter:blur(10px);pointer-events:none;"></div>
+        <div style="position:absolute;bottom:-160px;left:-120px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(17,24,39,0.07),transparent 70%);filter:blur(10px);pointer-events:none;"></div>
+
+        <div style="max-width:760px;margin:0 auto;text-align:center;position:relative;z-index:1;">
+            <span style="background:white;border:1px solid #E5E5EA;border-radius:30px;padding:6px 16px;font-size:12px;font-weight:700;color:#15803D;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:24px;"><i class="fas fa-circle" style="font-size:6px;color:#16A34A;"></i> Software house full-stack</span>
+            <h1 style="font-size:clamp(32px,5.2vw,52px);font-weight:800;color:#111827;line-height:1.12;margin:0 0 18px;letter-spacing:-1.4px;">Tecnologia sob medida<br>para vender, gerenciar e crescer</h1>
+            <p style="font-size:17px;color:#6E6E73;line-height:1.65;margin:0 auto 32px;max-width:580px;">Da automação da força de vendas ao ERP e à consultoria de processos — construímos exatamente o software que o seu negócio precisa, sem gambiarra de planilha.</p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:56px;">
+                <button onclick="document.getElementById('lp-repos').scrollIntoView({behavior:'smooth'})" class="btn-p" style="width:auto;padding:15px 28px;box-shadow:0 8px 20px rgba(22,163,74,0.25);"><i class="fas fa-bolt"></i>Conhecer o RepOS</button>
+                <button onclick="toast('Em breve: fale com um consultor!')" class="btn-s" style="width:auto;padding:15px 28px;">Falar com um consultor</button>
+            </div>
+        </div>
+
+        <!-- Mockup do produto -->
+        <div style="max-width:880px;margin:0 auto;position:relative;z-index:1;">
+            <div style="background:white;border-radius:18px 18px 0 0;box-shadow:0 30px 60px -20px rgba(17,24,39,0.25);border:1px solid #EEF0F2;overflow:hidden;">
+                <div style="display:flex;gap:6px;align-items:center;padding:12px 16px;background:#F5F5F7;border-bottom:1px solid #EEF0F2;">
+                    <span style="width:9px;height:9px;border-radius:50%;background:#FF5F57;"></span>
+                    <span style="width:9px;height:9px;border-radius:50%;background:#FEBC2E;"></span>
+                    <span style="width:9px;height:9px;border-radius:50%;background:#28C840;"></span>
+                    <span style="margin-left:10px;font-size:11px;color:#86868B;font-weight:600;">app.repos.com.br</span>
+                </div>
+                <div style="background:linear-gradient(135deg,#14532D,#16A34A);padding:22px 24px 40px;text-align:left;">
+                    <p style="color:rgba(255,255,255,0.7);font-size:12px;margin:0;">Bom dia,</p>
+                    <p style="color:white;font-size:18px;font-weight:800;margin:2px 0 0;">João Representante</p>
+                </div>
+                <div style="display:flex;gap:12px;padding:0 24px;margin-top:-22px;">
+                    <div style="flex:1;background:white;border-radius:12px;padding:14px;box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+                        <div style="font-size:18px;font-weight:800;color:#1D1D1F;">R$ 24.680</div>
+                        <div style="font-size:10px;color:#86868B;font-weight:600;">Faturamento (mês)</div>
+                    </div>
+                    <div style="flex:1;background:white;border-radius:12px;padding:14px;box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+                        <div style="font-size:18px;font-weight:800;color:#1D1D1F;">38</div>
+                        <div style="font-size:10px;color:#86868B;font-weight:600;">Leads ativos</div>
+                    </div>
+                    <div style="flex:1;background:white;border-radius:12px;padding:14px;box-shadow:0 4px 14px rgba(0,0,0,0.08);" class="hidden md:block">
+                        <div style="font-size:18px;font-weight:800;color:#1D1D1F;">87%</div>
+                        <div style="font-size:10px;color:#86868B;font-weight:600;">Meta do mês</div>
+                    </div>
+                </div>
+                <div style="padding:24px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-size:12px;font-weight:700;color:#86868B;text-transform:uppercase;letter-spacing:.04em;">Leads novos</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;background:#F9FAFB;border-radius:10px;padding:10px 14px;">
+                            <span style="font-size:13px;font-weight:600;color:#1D1D1F;">Perfumaria Moça Bonita</span>
+                            <span class="badge" style="background:#F5F5F7;color:#6E6E73;">Novo</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;background:#F9FAFB;border-radius:10px;padding:10px 14px;">
+                            <span style="font-size:13px;font-weight:600;color:#1D1D1F;">Bazar Miyuki Ltda</span>
+                            <span class="badge" style="background:#DCFCE7;color:#15803D;">Contatado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NÚMEROS -->
+    <div id="lp-numeros" style="background:#111827;padding:36px 20px;">
+        <div class="grid grid-cols-2 md:grid-cols-4" style="max-width:1000px;margin:0 auto;gap:24px;text-align:center;">
+            <div><div style="font-size:28px;font-weight:800;color:white;">+500</div><div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;">Representantes ativos</div></div>
+            <div><div style="font-size:28px;font-weight:800;color:white;">+50</div><div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;">Indústrias parceiras</div></div>
+            <div><div style="font-size:28px;font-weight:800;color:white;">R$ 12M</div><div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;">Em pedidos/mês</div></div>
+            <div><div style="font-size:28px;font-weight:800;color:white;">98%</div><div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;">Satisfação dos clientes</div></div>
+        </div>
+    </div>
+
+    <!-- SERVIÇOS -->
+    <div id="lp-servicos" style="padding:72px 20px;max-width:1180px;margin:0 auto;width:100%;">
+        <div class="slabel" style="text-align:center;margin-bottom:8px;">O que fazemos</div>
+        <h2 style="text-align:center;font-size:30px;font-weight:800;color:#111827;margin:0 0 12px;letter-spacing:-0.5px;">Um software pra cada etapa do seu negócio</h2>
+        <p style="text-align:center;color:#6E6E73;font-size:15px;margin:0 0 40px;">Escolha onde sua empresa precisa de mais força — ou deixe a gente descobrir junto com você.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4" style="gap:18px;">
+            <div id="lp-repos" style="position:relative;background:linear-gradient(150deg,#052E16,#15803D 55%,#16A34A);border-radius:20px;padding:26px;color:white;cursor:pointer;box-shadow:0 16px 32px -12px rgba(22,163,74,0.4);transition:transform .2s;" onclick="showScreen('login')" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+                <span style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.18);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;">Destaque</span>
+                <div style="width:44px;height:44px;background:rgba(255,255,255,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><i class="fas fa-route" style="font-size:19px;"></i></div>
+                <div style="font-weight:800;font-size:18px;margin-bottom:8px;">RepOS</div>
+                <p style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.55;margin:0 0 20px;">CRM completo para representantes comerciais e indústrias: leads, carteira, pedidos, rota e financeiro num só lugar.</p>
+                <span style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;">Entrar no RepOS <i class="fas fa-arrow-right"></i></span>
+            </div>
+            <div class="card" style="padding:26px;transition:transform .2s, box-shadow .2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px -8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='none';this.style.boxShadow=''">
+                <div style="width:44px;height:44px;background:#F0FDF4;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><i class="fas fa-cubes" style="font-size:19px;color:#16A34A;"></i></div>
+                <div style="font-weight:800;font-size:18px;color:#111827;margin-bottom:8px;">ERP personalizado</div>
+                <p style="font-size:13px;color:#6E6E73;line-height:1.55;margin:0;">Sistemas de gestão sob medida para estoque, financeiro e operações da sua empresa.</p>
+            </div>
+            <div class="card" style="padding:26px;transition:transform .2s, box-shadow .2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px -8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='none';this.style.boxShadow=''">
+                <div style="width:44px;height:44px;background:#F0FDF4;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><i class="fas fa-chart-line" style="font-size:19px;color:#16A34A;"></i></div>
+                <div style="font-weight:800;font-size:18px;color:#111827;margin-bottom:8px;">Consultoria em processos</div>
+                <p style="font-size:13px;color:#6E6E73;line-height:1.55;margin:0;">Mapeamento e otimização de processos comerciais e operacionais antes (ou em vez) de qualquer software.</p>
+            </div>
+            <div class="card" style="padding:26px;transition:transform .2s, box-shadow .2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 24px -8px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='none';this.style.boxShadow=''">
+                <div style="width:44px;height:44px;background:#F0FDF4;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;"><i class="fas fa-code" style="font-size:19px;color:#16A34A;"></i></div>
+                <div style="font-weight:800;font-size:18px;color:#111827;margin-bottom:8px;">Software sob medida</div>
+                <p style="font-size:13px;color:#6E6E73;line-height:1.55;margin:0;">Aplicações web e mobile desenvolvidas do zero para necessidades que nenhuma plataforma pronta resolve.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA FINAL -->
+    <div style="background:#F0FDF4;padding:56px 20px;text-align:center;border-top:1px solid #DCFCE7;border-bottom:1px solid #DCFCE7;">
+        <h2 style="font-size:26px;font-weight:800;color:#111827;margin:0 0 10px;letter-spacing:-0.5px;">Pronto para organizar sua operação comercial?</h2>
+        <p style="color:#6E6E73;font-size:15px;margin:0 0 24px;">Comece pelo RepOS — ou nos conte o que sua empresa precisa.</p>
+        <button onclick="showScreen('login')" class="btn-p" style="width:auto;padding:15px 30px;margin:0 auto;"><i class="fas fa-arrow-right-to-bracket"></i>Acessar o RepOS</button>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="background:#111827;padding:48px 20px 24px;">
+        <div class="grid grid-cols-1 md:grid-cols-4" style="max-width:1180px;margin:0 auto;gap:32px;">
+            <div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div style="width:30px;height:30px;background:rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-circle-nodes" style="color:white;font-size:13px;"></i></div>
+                    <span style="font-size:16px;font-weight:800;color:white;">Órbita</span>
+                </div>
+                <p style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.6;margin:0;">Software house focada em tecnologia comercial e de gestão para empresas brasileiras.</p>
+            </div>
+            <div>
+                <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;">Produtos</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <a href="#lp-repos" style="font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;">RepOS</a>
+                    <a href="#lp-servicos" style="font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;">ERP personalizado</a>
+                    <a href="#lp-servicos" style="font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;">Software sob medida</a>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;">Empresa</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <a href="#lp-numeros" style="font-size:13px;color:rgba(255,255,255,0.55);text-decoration:none;">Resultados</a>
+                    <span onclick="toast('Em breve!')" style="font-size:13px;color:rgba(255,255,255,0.55);cursor:pointer;">Sobre</span>
+                    <span onclick="toast('Em breve!')" style="font-size:13px;color:rgba(255,255,255,0.55);cursor:pointer;">Contato</span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;">Acesso</div>
+                <button onclick="showScreen('login')" style="font-size:13px;font-weight:700;color:#111827;background:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:'Inter',sans-serif;">Entrar no RepOS</button>
+            </div>
+        </div>
+        <div style="max-width:1180px;margin:32px auto 0;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);text-align:center;">
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0;">© 2026 Órbita Software · Todos os direitos reservados</p>
+        </div>
+    </div>
+</div>
 
 <!-- ========== LOGIN ========== -->
 <div class="screen" id="screen-login">
@@ -212,7 +235,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;">
                 <i class="fas fa-cart-plus" style="color:white;font-size:16px;width:22px;"></i>
-                <span style="color:rgba(255,255,255,0.85);font-size:13px;">Pedidos digitais com simulador de margem</span>
+                <span style="color:rgba(255,255,255,0.85);font-size:13px;">Pedidos digitais com PDF automático</span>
             </div>
             <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;">
                 <i class="fas fa-chart-line" style="color:white;font-size:16px;width:22px;"></i>
@@ -223,16 +246,17 @@
 
     <div class="auth-form-panel">
         <div class="auth-form-inner">
+        <button onclick="showScreen('landing')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;color:#86868B;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;padding:0;margin-bottom:18px;"><i class="fas fa-arrow-left"></i> Voltar para Órbita</button>
         <h2 style="font-size:22px;font-weight:700;color:#1D1D1F;margin:0 0 4px;">Bem-vindo de volta</h2>
         <p style="font-size:14px;color:#6E6E73;margin:0 0 24px;">Acesse sua conta para continuar</p>
 
         <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px;">
             <div>
-                <label style="font-size:12px;font-weight:600;color:#3A3A3C;display:block;margin-bottom:6px;">E-MAIL</label>
+                <label class="lbl">E-MAIL</label>
                 <input class="inp" type="email" id="li-email" placeholder="seu@email.com">
             </div>
             <div>
-                <label style="font-size:12px;font-weight:600;color:#3A3A3C;display:block;margin-bottom:6px;">SENHA</label>
+                <label class="lbl">SENHA</label>
                 <input class="inp" type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()">
             </div>
         </div>
@@ -251,14 +275,28 @@
             <i class="fas fa-user-plus" style="color:#16A34A;"></i>Criar conta grátis — 14 dias
         </button>
 
-        <div style="margin-top:20px;padding:14px 16px;background:#F5F5F7;border-radius:12px;border:1px solid #E5E5EA;">
-            <div style="font-size:12px;font-weight:700;color:#3A3A3C;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-flask" style="color:#16A34A;font-size:11px;"></i>Conta de demonstração
-            </div>
-            <div style="font-size:12px;color:#6E6E73;line-height:1.6;">
-                E-mail: <strong style="color:#1D1D1F;">demo@reposapp.com</strong><br>
-                Senha: <strong style="color:#1D1D1F;">demo123</strong>
-            </div>
+        <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:11px;font-weight:700;color:#86868B;text-transform:uppercase;letter-spacing:.05em;">Contas de demonstração</div>
+
+            <button type="button" onclick="fillDemo('gestor.representante@reposapp.com','gestor123')" style="text-align:left;padding:12px 14px;background:#F0FDF4;border-radius:12px;border:1px solid #BBF7D0;cursor:pointer;font-family:'Inter',sans-serif;">
+                <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><i class="fas fa-route" style="font-size:11px;"></i>Representantes — Gestor de equipe</div>
+                <div style="font-size:11px;color:#3A6B4C;line-height:1.5;">gestor.representante@reposapp.com · gestor123</div>
+            </button>
+
+            <button type="button" onclick="fillDemo('membro.representante@reposapp.com','membro123')" style="text-align:left;padding:12px 14px;background:#F0FDF4;border-radius:12px;border:1px solid #BBF7D0;cursor:pointer;font-family:'Inter',sans-serif;">
+                <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><i class="fas fa-user-group" style="font-size:11px;"></i>Representantes — Participante de equipe</div>
+                <div style="font-size:11px;color:#3A6B4C;line-height:1.5;">membro.representante@reposapp.com · membro123</div>
+            </button>
+
+            <button type="button" onclick="fillDemo('gestor.distribuidora@reposapp.com','gestor123')" style="text-align:left;padding:12px 14px;background:#FFF7ED;border-radius:12px;border:1px solid #FED7AA;cursor:pointer;font-family:'Inter',sans-serif;">
+                <div style="font-size:12px;font-weight:700;color:#9A3412;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><i class="fas fa-industry" style="font-size:11px;"></i>Distribuidora Refer — Gestor</div>
+                <div style="font-size:11px;color:#9A5B3C;line-height:1.5;">gestor.distribuidora@reposapp.com · gestor123</div>
+            </button>
+
+            <button type="button" onclick="fillDemo('colaborador.distribuidora@reposapp.com','colab123')" style="text-align:left;padding:12px 14px;background:#FFF7ED;border-radius:12px;border:1px solid #FED7AA;cursor:pointer;font-family:'Inter',sans-serif;">
+                <div style="font-size:12px;font-weight:700;color:#9A3412;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><i class="fas fa-user-tie" style="font-size:11px;"></i>Distribuidora Refer — Colaborador</div>
+                <div style="font-size:11px;color:#9A5B3C;line-height:1.5;">colaborador.distribuidora@reposapp.com · colab123</div>
+            </button>
         </div>
         </div>
     </div>
@@ -278,41 +316,61 @@
 
     <div class="auth-form-panel">
         <div class="auth-form-inner">
-        <div style="display:flex;align-items:center;gap:12px;border-bottom:1px solid #F5F5F7;margin-bottom:20px;padding-bottom:16px;">
-            <button onclick="showScreen('login')" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <button id="rg-back-btn" onclick="rgBack()" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;flex-shrink:0;">
                 <i class="fas fa-arrow-left"></i>
             </button>
             <div>
-                <h2 style="font-size:18px;font-weight:700;color:#1D1D1F;margin:0;">Criar conta</h2>
-                <p style="font-size:12px;color:#6E6E73;margin:0;">Sem cartão de crédito</p>
+                <h2 id="rg-step-title" style="font-size:18px;font-weight:700;color:#1D1D1F;margin:0;">Criar conta</h2>
+                <p id="rg-step-sub" style="font-size:12px;color:#6E6E73;margin:0;">Sem cartão de crédito</p>
             </div>
         </div>
+        <div class="stepper" style="margin-bottom:20px;"><div id="rg-bar1" class="done"></div><div id="rg-bar2"></div><div id="rg-bar3"></div></div>
 
-        <div style="display:flex;flex-direction:column;gap:14px;">
-            <div>
-                <label style="font-size:12px;font-weight:600;color:#3A3A3C;display:block;margin-bottom:6px;">NOME COMPLETO</label>
-                <input class="inp" type="text" id="rg-name" placeholder="João da Silva">
-            </div>
-            <div>
-                <label style="font-size:12px;font-weight:600;color:#3A3A3C;display:block;margin-bottom:6px;">E-MAIL</label>
-                <input class="inp" type="email" id="rg-email" placeholder="joao@email.com">
-            </div>
-            <div>
-                <label style="font-size:12px;font-weight:600;color:#3A3A3C;display:block;margin-bottom:6px;">WHATSAPP</label>
-                <input class="inp" type="tel" id="rg-phone" placeholder="(11) 99999-9999">
-            </div>
-            <div>
-                <label style="font-size:12px;font-weight:600;color:#3A3A3C;display:block;margin-bottom:6px;">SENHA</label>
-                <input class="inp" type="password" id="rg-pass" placeholder="Mínimo 6 caracteres">
-            </div>
+        <!-- STEP 1: dados -->
+        <div id="rg-step-1" style="display:flex;flex-direction:column;gap:14px;">
+            <div><label class="lbl">NOME COMPLETO</label><input class="inp" type="text" id="rg-name" placeholder="João da Silva"></div>
+            <div><label class="lbl">E-MAIL</label><input class="inp" type="email" id="rg-email" placeholder="joao@email.com"></div>
+            <div><label class="lbl">WHATSAPP</label><input class="inp" type="tel" id="rg-phone" placeholder="(11) 99999-9999"></div>
+            <div><label class="lbl">SENHA</label><input class="inp" type="password" id="rg-pass" placeholder="Mínimo 6 caracteres"></div>
+            <button class="btn-p" onclick="rgGoStep(2)" style="margin-top:6px;"><i class="fas fa-arrow-right"></i>Continuar</button>
+        </div>
 
-            <button class="btn-p" onclick="handleRegister()" style="margin-top:6px;">
-                <i class="fas fa-rocket"></i>Começar gratuitamente
+        <!-- STEP 2: tipo de conta -->
+        <div id="rg-step-2" style="display:none;flex-direction:column;gap:12px;">
+            <button type="button" class="rg-type-card" data-type="representante" onclick="selectAccountType(this)" style="display:flex;align-items:center;gap:14px;text-align:left;padding:16px;border-radius:14px;border:1.5px solid #E5E5EA;background:white;cursor:pointer;font-family:'Inter',sans-serif;">
+                <div style="width:42px;height:42px;background:#F0FDF4;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-route" style="color:#16A34A;font-size:17px;"></i></div>
+                <div><div style="font-size:14px;font-weight:700;color:#1D1D1F;">Sou representante comercial</div><div style="font-size:12px;color:#6E6E73;margin-top:2px;">Gerencio carteira, leads, pedidos e rota</div></div>
             </button>
+            <button type="button" class="rg-type-card" data-type="fornecedor" onclick="selectAccountType(this)" style="display:flex;align-items:center;gap:14px;text-align:left;padding:16px;border-radius:14px;border:1.5px solid #E5E5EA;background:white;cursor:pointer;font-family:'Inter',sans-serif;">
+                <div style="width:42px;height:42px;background:#FFF7ED;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-industry" style="color:#EA580C;font-size:17px;"></i></div>
+                <div><div style="font-size:14px;font-weight:700;color:#1D1D1F;">Sou fornecedor / indústria</div><div style="font-size:12px;color:#6E6E73;margin-top:2px;">Publico catálogo e gerencio representantes</div></div>
+            </button>
+            <button class="btn-p" id="rg-step2-next" onclick="rgGoStep(3)" disabled style="margin-top:6px;"><i class="fas fa-arrow-right"></i>Continuar</button>
+        </div>
 
-            <p style="font-size:11px;color:#86868B;text-align:center;line-height:1.6;margin:0;">
-                Ao criar sua conta você concorda com os Termos de Uso e Política de Privacidade do RepOS.
-            </p>
+        <!-- STEP 3: organização -->
+        <div id="rg-step-3" style="display:none;flex-direction:column;gap:12px;">
+            <div id="rg-org-rep" style="display:none;flex-direction:column;gap:12px;">
+                <button type="button" class="rg-org-card" data-org="new" onclick="selectOrgMode(this)" style="display:flex;align-items:center;gap:12px;text-align:left;padding:14px;border-radius:14px;border:1.5px solid #E5E5EA;background:white;cursor:pointer;font-family:'Inter',sans-serif;">
+                    <i class="fas fa-briefcase" style="color:#16A34A;font-size:16px;"></i>
+                    <div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">Criar minha carteira própria</div><div style="font-size:11px;color:#6E6E73;">Trabalho de forma independente</div></div>
+                </button>
+                <button type="button" class="rg-org-card" data-org="join" onclick="selectOrgMode(this)" style="display:flex;align-items:center;gap:12px;text-align:left;padding:14px;border-radius:14px;border:1.5px solid #E5E5EA;background:white;cursor:pointer;font-family:'Inter',sans-serif;">
+                    <i class="fas fa-people-group" style="color:#16A34A;font-size:16px;"></i>
+                    <div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">Entrar em uma organização</div><div style="font-size:11px;color:#6E6E73;">Represento um fornecedor já cadastrado</div></div>
+                </button>
+                <div id="rg-org-join-select" style="display:none;">
+                    <label class="lbl">Organização</label>
+                    <select class="inp" id="rg-org-select"></select>
+                </div>
+            </div>
+            <div id="rg-org-fornecedor" style="display:none;flex-direction:column;gap:12px;">
+                <label class="lbl">Nome da empresa</label>
+                <input class="inp" id="rg-org-name" placeholder="Ex: Refer Distribuidora">
+            </div>
+            <button class="btn-p" onclick="handleRegister()" style="margin-top:6px;"><i class="fas fa-rocket"></i>Criar conta</button>
+            <p style="font-size:11px;color:#86868B;text-align:center;line-height:1.6;margin:0;">Ao criar sua conta você concorda com os Termos de Uso e Política de Privacidade do RepOS.</p>
         </div>
         </div>
     </div>
@@ -320,7 +378,6 @@
 
 <!-- ========== DASHBOARD ========== -->
 <div class="screen" id="screen-dashboard">
-    <!-- Blue header -->
     <div class="dash-hero" style="background:linear-gradient(135deg,#14532D 0%,#16A34A 100%);padding:20px 20px 64px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
             <div>
@@ -331,73 +388,62 @@
                 <div style="background:rgba(255,255,255,0.15);border-radius:20px;padding:6px 12px;">
                     <span id="dash-date" style="color:rgba(255,255,255,0.9);font-size:11px;font-weight:600;"></span>
                 </div>
-                <button onclick="logout()" style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:50%;border:none;cursor:pointer;color:white;font-size:14px;">
-                    <i class="fas fa-right-from-bracket"></i>
+                <button onclick="openMoreMenu()" style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:50%;border:none;cursor:pointer;color:white;font-size:14px;">
+                    <i class="fas fa-bars"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Meta do mês -->
-        <div style="background:rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;backdrop-filter:blur(4px);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="color:rgba(255,255,255,0.75);font-size:13px;font-weight:500;">Meta do mês</span>
-                <span id="dash-mpct" style="color:white;font-size:19px;font-weight:800;"></span>
+        <div style="background:rgba(255,255,255,0.12);border-radius:14px;padding:14px 16px;backdrop-filter:blur(4px);display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="color:rgba(255,255,255,0.75);font-size:11px;font-weight:500;">Faturamento</span>
+                    <span id="dash-mpct" style="color:white;font-size:15px;font-weight:800;"></span>
+                </div>
+                <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:5px;overflow:hidden;">
+                    <div id="dash-mbar" style="height:100%;background:white;border-radius:4px;transition:width 1s ease;width:0;"></div>
+                </div>
+                <div id="dash-mval" style="color:rgba(255,255,255,0.65);font-size:10px;margin-top:5px;"></div>
             </div>
-            <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:6px;overflow:hidden;">
-                <div id="dash-mbar" style="height:100%;background:white;border-radius:4px;transition:width 1s ease;width:0;"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-top:6px;">
-                <span id="dash-mval" style="color:rgba(255,255,255,0.65);font-size:11px;"></span>
-                <span id="dash-mtgt" style="color:rgba(255,255,255,0.65);font-size:11px;"></span>
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="color:rgba(255,255,255,0.75);font-size:11px;font-weight:500;">Visitas</span>
+                    <span id="dash-vpct" style="color:white;font-size:15px;font-weight:800;"></span>
+                </div>
+                <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:5px;overflow:hidden;">
+                    <div id="dash-vbar" style="height:100%;background:white;border-radius:4px;transition:width 1s ease;width:0;"></div>
+                </div>
+                <div id="dash-vval" style="color:rgba(255,255,255,0.65);font-size:10px;margin-top:5px;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Stat cards floating -->
     <div class="stat-row">
         <div class="sc">
-            <i class="fas fa-users" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i>
-            <div id="dash-nc" style="font-size:24px;font-weight:800;color:#1D1D1F;line-height:1;"></div>
-            <div style="font-size:11px;color:#86868B;font-weight:500;margin-top:3px;">Clientes</div>
+            <div class="sc-icon"><i class="fas fa-users"></i></div>
+            <div id="dash-nc" style="font-size:22px;font-weight:800;color:#1D1D1F;line-height:1;"></div>
+            <div style="font-size:11px;color:#86868B;font-weight:600;">Clientes</div>
         </div>
         <div class="sc">
-            <i class="fas fa-route" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i>
-            <div style="font-size:24px;font-weight:800;color:#1D1D1F;line-height:1;">2/4</div>
-            <div style="font-size:11px;color:#86868B;font-weight:500;margin-top:3px;">Visitas hoje</div>
+            <div class="sc-icon"><i class="fas fa-route"></i></div>
+            <div id="dash-vhoje" style="font-size:22px;font-weight:800;color:#1D1D1F;line-height:1;"></div>
+            <div style="font-size:11px;color:#86868B;font-weight:600;">Visitas hoje</div>
         </div>
         <div class="sc">
-            <i class="fas fa-file-invoice-dollar" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i>
-            <div id="dash-np" style="font-size:24px;font-weight:800;color:#1D1D1F;line-height:1;"></div>
-            <div style="font-size:11px;color:#86868B;font-weight:500;margin-top:3px;">Pedidos</div>
+            <div class="sc-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div id="dash-np" style="font-size:22px;font-weight:800;color:#1D1D1F;line-height:1;"></div>
+            <div style="font-size:11px;color:#86868B;font-weight:600;">Pedidos (mês)</div>
+        </div>
+        <div class="sc" onclick="showScreen('financeiro')" style="cursor:pointer;">
+            <div class="sc-icon"><i class="fas fa-sack-dollar"></i></div>
+            <div id="dash-comm" style="font-size:22px;font-weight:800;color:#1D1D1F;line-height:1;"></div>
+            <div style="font-size:11px;color:#86868B;font-weight:600;">Comissão (mês)</div>
         </div>
     </div>
 
     <div class="sb" style="margin-top:16px;">
-        <!-- Quick actions -->
-        <div class="grid grid-cols-2 lg:grid-cols-4" style="gap:10px;margin-bottom:20px;">
-            <button onclick="showScreen('pedido')" style="background:white;border:1.5px solid #E5E5EA;border-radius:14px;padding:14px;cursor:pointer;text-align:left;font-family:'Inter',sans-serif;transition:all 0.15s;" onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#E5E5EA'">
-                <i class="fas fa-cart-plus" style="color:#16A34A;font-size:20px;margin-bottom:8px;display:block;"></i>
-                <div style="font-size:13px;font-weight:600;color:#1D1D1F;">Novo pedido</div>
-                <div style="font-size:11px;color:#86868B;margin-top:2px;">Lançar rapidamente</div>
-            </button>
-            <button onclick="showScreen('rota')" style="background:white;border:1.5px solid #E5E5EA;border-radius:14px;padding:14px;cursor:pointer;text-align:left;font-family:'Inter',sans-serif;transition:all 0.15s;" onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#E5E5EA'">
-                <i class="fas fa-map-marked-alt" style="color:#16A34A;font-size:20px;margin-bottom:8px;display:block;"></i>
-                <div style="font-size:13px;font-weight:600;color:#1D1D1F;">Rota do dia</div>
-                <div style="font-size:11px;color:#86868B;margin-top:2px;">Ver visitas otimizadas</div>
-            </button>
-            <button onclick="showScreen('carteira')" class="hidden lg:block" style="background:white;border:1.5px solid #E5E5EA;border-radius:14px;padding:14px;cursor:pointer;text-align:left;font-family:'Inter',sans-serif;transition:all 0.15s;" onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#E5E5EA'">
-                <i class="fas fa-users" style="color:#16A34A;font-size:20px;margin-bottom:8px;display:block;"></i>
-                <div style="font-size:13px;font-weight:600;color:#1D1D1F;">Carteira</div>
-                <div style="font-size:11px;color:#86868B;margin-top:2px;">Ver todos os clientes</div>
-            </button>
-            <button onclick="toast('Relatórios — em breve!')" class="hidden lg:block" style="background:white;border:1.5px solid #E5E5EA;border-radius:14px;padding:14px;cursor:pointer;text-align:left;font-family:'Inter',sans-serif;transition:all 0.15s;" onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#E5E5EA'">
-                <i class="fas fa-chart-line" style="color:#16A34A;font-size:20px;margin-bottom:8px;display:block;"></i>
-                <div style="font-size:13px;font-weight:600;color:#1D1D1F;">Relatórios</div>
-                <div style="font-size:11px;color:#86868B;margin-top:2px;">Resumo do período</div>
-            </button>
-        </div>
+        <button onclick="showScreen('pedido')" class="btn-p" style="margin-bottom:20px;"><i class="fas fa-cart-plus"></i>Novo pedido</button>
 
-        <!-- Próximas visitas + Alertas -->
         <div class="lg:grid lg:grid-cols-2" style="gap:24px;">
             <div style="margin-bottom:20px;">
                 <div class="slabel" style="display:flex;justify-content:space-between;align-items:center;">
@@ -412,6 +458,14 @@
                 <div id="dash-alist" style="display:flex;flex-direction:column;gap:10px;"></div>
             </div>
         </div>
+
+        <div style="margin-top:4px;">
+            <div class="slabel" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>Leads novos</span>
+                <button onclick="showScreen('leads')" style="font-size:11px;font-weight:600;color:#16A34A;background:none;border:none;cursor:pointer;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">Ver todos →</button>
+            </div>
+            <div id="dash-leads" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
     </div>
 </div>
 
@@ -423,7 +477,7 @@
                 <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Carteira</h2>
                 <div id="cw-subtitle" style="font-size:12px;color:#86868B;margin-top:1px;"></div>
             </div>
-            <button onclick="toast('Cadastro de cliente — em breve!')" style="width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;">
+            <button onclick="openAddClient()" style="width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;">
                 <i class="fas fa-plus"></i>
             </button>
         </div>
@@ -444,6 +498,58 @@
     </div>
 </div>
 
+<!-- ========== ADD CLIENT MODAL ========== -->
+<div class="modal-overlay" id="modal-addclient">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Adicionar cliente</h3>
+            <button onclick="closeAddClient()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+                <label class="lbl">CNPJ (obrigatório)</label>
+                <div style="display:flex;gap:8px;">
+                    <input class="inp" id="nc-cnpj" placeholder="00.000.000/0000-00">
+                    <button onclick="lookupCNPJ()" class="btn-s" style="width:auto;padding:0 16px;white-space:nowrap;"><i class="fas fa-magnifying-glass" style="color:#16A34A;"></i> Buscar</button>
+                </div>
+            </div>
+            <div><label class="lbl">Razão Social</label><input class="inp" id="nc-name" placeholder="Razão social"></div>
+            <div><label class="lbl">Nome Fantasia</label><input class="inp" id="nc-fantasia" placeholder="Nome fantasia"></div>
+            <div class="grid grid-cols-2" style="gap:10px;">
+                <div><label class="lbl">Inscrição Estadual</label><input class="inp" id="nc-ie" placeholder="IE"></div>
+                <div><label class="lbl">Curva</label>
+                    <select class="inp" id="nc-cls"><option value="A">A</option><option value="B">B</option><option value="C" selected>C</option></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2" style="gap:10px;">
+                <div><label class="lbl">Regime tributário</label>
+                    <select class="inp" id="nc-regime">
+                        <option>Simples Nacional</option><option>MEI</option><option>Lucro Presumido</option><option>Lucro Real</option>
+                    </select>
+                </div>
+                <div><label class="lbl">Fornecedor padrão</label>
+                    <select class="inp" id="nc-supplier"></select>
+                </div>
+            </div>
+            <div><label class="lbl">Endereço (obrigatório p/ rotas)</label><input class="inp" id="nc-addr" placeholder="Rua, número"></div>
+            <div class="grid grid-cols-3" style="gap:10px;">
+                <div><label class="lbl">CEP</label><input class="inp" id="nc-cep" placeholder="00000-000"></div>
+                <div><label class="lbl">Cidade</label><input class="inp" id="nc-city" placeholder="Cidade"></div>
+                <div><label class="lbl">UF</label><input class="inp" id="nc-state" placeholder="UF" maxlength="2"></div>
+            </div>
+            <div class="grid grid-cols-2" style="gap:10px;">
+                <div><label class="lbl">E-mail compras</label><input class="inp" id="nc-emailcompras" placeholder="compras@cliente.com"></div>
+                <div><label class="lbl">Telefone compras</label><input class="inp" id="nc-phonecompras" placeholder="(11) 0000-0000"></div>
+            </div>
+            <div class="grid grid-cols-2" style="gap:10px;">
+                <div><label class="lbl">Nome responsável</label><input class="inp" id="nc-resp" placeholder="Nome do responsável"></div>
+                <div><label class="lbl">Telefone responsável</label><input class="inp" id="nc-phone" placeholder="(11) 90000-0000"></div>
+            </div>
+            <button class="btn-p" onclick="submitAddClient()" style="margin-top:6px;"><i class="fas fa-check"></i>Salvar cliente</button>
+        </div>
+    </div>
+</div>
+
 <!-- ========== BRIEFING CLIENTE ========== -->
 <div class="screen" id="screen-detail">
     <div class="ph">
@@ -451,7 +557,7 @@
             <button id="detail-back" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;font-size:14px;">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <div style="min-width:0;">
+            <div style="min-width:0;flex:1;">
                 <div id="d-name" style="font-size:17px;font-weight:700;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
                 <div id="d-seg" style="font-size:12px;color:#6E6E73;"></div>
             </div>
@@ -461,36 +567,28 @@
     <div class="sb">
       <div class="lg:grid lg:grid-cols-3" style="gap:24px;">
       <div class="lg:col-span-2">
-        <!-- Info card -->
         <div class="card" style="padding:16px;margin-bottom:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <span id="d-badge" class="badge"></span>
                 <span id="d-cnpj" style="font-size:12px;color:#6E6E73;font-family:monospace;"></span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div>
-                    <div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Contato</div>
-                    <div id="d-contact" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div>
-                </div>
-                <div>
-                    <div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Telefone</div>
-                    <div id="d-phone" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div>
-                </div>
+                <div><div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Responsável</div><div id="d-contact" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div></div>
+                <div><div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Telefone</div><div id="d-phone" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div></div>
+                <div><div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Endereço</div><div id="d-addr" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div></div>
+                <div><div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">E-mail compras</div><div id="d-email" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div></div>
+                <div><div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Regime tributário</div><div id="d-regime" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div></div>
+                <div><div style="font-size:10px;color:#86868B;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Fornecedor padrão</div><div id="d-supplier" style="font-size:13px;font-weight:600;color:#1D1D1F;"></div></div>
             </div>
         </div>
 
-        <!-- Overdue -->
         <div id="d-overdue" style="display:none;margin-bottom:12px;" class="overdue">
             <div style="width:38px;height:38px;background:#FEE2E2;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-circle-exclamation" style="color:#DC2626;font-size:17px;"></i>
             </div>
-            <div>
-                <div id="d-ov-val" style="font-size:14px;font-weight:700;color:#DC2626;"></div>
-                <div id="d-ov-days" style="font-size:12px;color:#EF4444;margin-top:2px;"></div>
-            </div>
+            <div><div id="d-ov-val" style="font-size:14px;font-weight:700;color:#DC2626;"></div><div id="d-ov-days" style="font-size:12px;color:#EF4444;margin-top:2px;"></div></div>
         </div>
 
-        <!-- Briefing automático -->
         <div style="margin-bottom:12px;">
             <div class="slabel">Briefing da visita</div>
             <div class="card" style="padding:16px;">
@@ -505,47 +603,37 @@
                     </div>
                 </div>
                 <div style="background:#F0FDF4;border-radius:10px;padding:12px;border-left:3px solid #16A34A;">
-                    <div style="font-size:11px;font-weight:700;color:#15803D;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;">
-                        <i class="fas fa-lightbulb" style="margin-right:4px;"></i>Sugestão RepOS
-                    </div>
+                    <div style="font-size:11px;font-weight:700;color:#15803D;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;"><i class="fas fa-lightbulb" style="margin-right:4px;"></i>Sugestão RepOS</div>
                     <div id="d-suggest" style="font-size:13px;color:#14532D;line-height:1.5;"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Último pedido -->
         <div style="margin-bottom:12px;">
-            <div class="slabel">Último pedido</div>
-            <div class="card" style="padding:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <div id="d-odate" style="font-size:13px;color:#6E6E73;"></div>
-                    <div style="font-size:11px;font-weight:700;color:#059669;background:#DCFCE7;padding:3px 10px;border-radius:20px;">Entregue</div>
-                </div>
-                <div id="d-oprods" style="font-size:13px;color:#3A3A3C;line-height:1.6;margin-bottom:12px;"></div>
-                <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid #F5F5F7;">
-                    <span style="font-size:13px;color:#6E6E73;">Total</span>
-                    <span id="d-ototal" style="font-size:15px;font-weight:800;color:#1D1D1F;"></span>
-                </div>
-            </div>
+            <div class="slabel">Histórico de pedidos</div>
+            <div id="d-orders" class="card" style="padding:8px;"></div>
+            <div id="d-ticket" style="margin-top:8px;background:#F5F5F7;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#3A3A3C;"></div>
         </div>
 
-      </div><!-- /col-span-2 -->
+        <div style="margin-bottom:12px;">
+            <div class="slabel">Promotoras ativas</div>
+            <div id="d-promoters" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <div class="slabel">Treinamentos realizados</div>
+            <div id="d-trainings" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
 
       <div>
-        <!-- Actions -->
         <div class="grid grid-cols-2 lg:grid-cols-1" style="gap:10px;margin-bottom:10px;">
-            <button onclick="goOrder()" class="btn-p" style="border-radius:12px;padding:13px;font-size:14px;">
-                <i class="fas fa-cart-plus"></i>Fazer pedido
-            </button>
-            <button onclick="toast('Visita registrada!')" style="background:#F0FDF4;color:#059669;border-radius:12px;padding:13px;font-size:14px;font-weight:600;border:1.5px solid #A7F3D0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Inter',sans-serif;">
-                <i class="fas fa-map-pin"></i>Registrar visita
-            </button>
+            <button onclick="goOrder()" class="btn-p" style="border-radius:12px;padding:13px;font-size:14px;"><i class="fas fa-cart-plus"></i>Fazer pedido</button>
+            <button onclick="registerVisit()" style="background:#F0FDF4;color:#059669;border-radius:12px;padding:13px;font-size:14px;font-weight:600;border:1.5px solid #A7F3D0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Inter',sans-serif;"><i class="fas fa-map-pin"></i>Registrar visita</button>
         </div>
-        <button onclick="toast('Ligando para '+currentClient?.contact+'...')" class="btn-s">
-            <i class="fas fa-phone" style="color:#16A34A;"></i>Ligar para o cliente
-        </button>
+        <button id="d-call-btn" class="btn-s"><i class="fas fa-phone" style="color:#16A34A;"></i>Ligar para o responsável</button>
       </div>
-      </div><!-- /grid -->
+      </div>
     </div>
 </div>
 
@@ -567,65 +655,60 @@
     <div class="sb">
       <div class="lg:grid lg:grid-cols-2 lg:items-start" style="gap:24px;">
       <div>
-        <!-- Fake map -->
         <div class="map-bg" style="margin-bottom:14px;">
-            <svg width="100%" height="185" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;pointer-events:none;">
-                <line x1="14%" y1="70%" x2="36%" y2="28%" stroke="#22C55E" stroke-width="2.5" stroke-dasharray="6,5" opacity="0.5"/>
-                <line x1="36%" y1="28%" x2="62%" y2="52%" stroke="#22C55E" stroke-width="2.5" stroke-dasharray="6,5" opacity="0.5"/>
-                <line x1="62%" y1="52%" x2="82%" y2="20%" stroke="#22C55E" stroke-width="2.5" stroke-dasharray="6,5" opacity="0.5"/>
-            </svg>
-            <!-- Pins -->
-            <div style="position:absolute;left:11%;top:58%;transform:translateX(-50%);">
-                <div style="width:32px;height:32px;background:#16A34A;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(22,163,74,0.4);display:flex;align-items:center;justify-content:center;">
-                    <span style="transform:rotate(45deg);color:white;font-size:12px;font-weight:800;">1</span>
-                </div>
-            </div>
-            <div style="position:absolute;left:33%;top:16%;transform:translateX(-50%);">
-                <div style="width:32px;height:32px;background:#15803D;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(21,128,61,0.4);display:flex;align-items:center;justify-content:center;">
-                    <span style="transform:rotate(45deg);color:white;font-size:12px;font-weight:800;">2</span>
-                </div>
-            </div>
-            <div style="position:absolute;left:59%;top:40%;transform:translateX(-50%);">
-                <div style="width:32px;height:32px;background:#22C55E;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(34,197,94,0.4);display:flex;align-items:center;justify-content:center;">
-                    <span style="transform:rotate(45deg);color:white;font-size:12px;font-weight:800;">3</span>
-                </div>
-            </div>
-            <div style="position:absolute;left:80%;top:8%;transform:translateX(-50%);">
-                <div style="width:32px;height:32px;background:#4ADE80;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(74,222,128,0.4);display:flex;align-items:center;justify-content:center;">
-                    <span style="transform:rotate(45deg);color:white;font-size:12px;font-weight:800;">4</span>
-                </div>
-            </div>
-            <!-- User location -->
-            <div style="position:absolute;left:11%;top:82%;transform:translateX(-50%);">
-                <div style="width:14px;height:14px;background:#16A34A;border-radius:50%;border:2.5px solid white;box-shadow:0 0 0 5px rgba(22,163,74,0.25);"></div>
-            </div>
-            <div style="position:absolute;bottom:10px;right:12px;background:rgba(255,255,255,0.92);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;color:#1D1D1F;">
-                <i class="fas fa-location-arrow" style="color:#16A34A;margin-right:4px;font-size:9px;"></i>Rota otimizada
-            </div>
+            <svg id="rota-map-lines" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;pointer-events:none;"></svg>
+            <div id="rota-map-pins" style="position:absolute;inset:0;"></div>
+            <div style="position:absolute;bottom:10px;right:12px;background:rgba(255,255,255,0.92);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;color:#1D1D1F;"><i class="fas fa-location-arrow" style="color:#16A34A;margin-right:4px;font-size:9px;"></i>Trajeto ilustrativo · ordem de visita</div>
         </div>
 
-        <!-- Distance summary -->
-        <div style="background:#F0FDF4;border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="background:#F0FDF4;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <i class="fas fa-car" style="color:#16A34A;font-size:18px;"></i>
-                <div>
-                    <div style="font-size:13px;font-weight:600;color:#14532D;">Distância total estimada</div>
-                    <div style="font-size:11px;color:#86EFAC;">Ordenado por prioridade RFM</div>
-                </div>
+                <div><div style="font-size:13px;font-weight:600;color:#14532D;">Distância total estimada</div><div style="font-size:11px;color:#86EFAC;">Ordenado por prioridade RFM</div></div>
             </div>
-            <div style="font-size:20px;font-weight:800;color:#15803D;">18,4 km</div>
+            <div id="rota-dist-total" style="font-size:20px;font-weight:800;color:#15803D;">—</div>
         </div>
-      </div><!-- /col 1 -->
+
+        <div style="background:white;border-radius:12px;padding:14px 16px;border:1.5px solid #E5E5EA;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:13px;font-weight:600;color:#1D1D1F;">Meta diária de visitas</span>
+                <span id="rota-goal-txt" style="font-size:13px;font-weight:800;color:#16A34A;"></span>
+            </div>
+            <div style="background:#F5F5F7;border-radius:4px;height:7px;overflow:hidden;">
+                <div id="rota-goal-bar" style="height:100%;background:#16A34A;border-radius:4px;transition:width .4s;width:0;"></div>
+            </div>
+        </div>
+      </div>
 
       <div>
-        <div class="slabel">Sequência de visitas</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="slabel" style="margin-bottom:0;">Sequência de visitas</div>
+            <button onclick="openBuildRoute()" style="font-size:11px;font-weight:700;color:#16A34A;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:10px;"><i class="fas fa-sliders"></i> Nova rota</button>
+        </div>
+        <div id="rota-custom-tag" style="display:none;margin-bottom:10px;">
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:12px;color:#15803D;font-weight:600;"><i class="fas fa-check-circle"></i> Rota personalizada ativa</span>
+                <button onclick="clearCustomRoute()" style="font-size:11px;font-weight:700;color:#DC2626;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;">Usar sugestão automática</button>
+            </div>
+        </div>
         <div id="rota-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
 
-        <button class="btn-p" onclick="toast('Rota iniciada — boa jornada!')">
-            <i class="fas fa-play"></i>Iniciar rota
-        </button>
+        <button id="rota-start-btn" class="btn-p" onclick="startRoute()"><i class="fab fa-waze"></i>Iniciar rota (abrir Waze)</button>
       </div>
-      </div><!-- /grid -->
+      </div>
+    </div>
+</div>
+
+<!-- ========== NOVA ROTA MODAL ========== -->
+<div class="modal-overlay" id="modal-buildroute">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Montar rota</h3>
+            <button onclick="closeBuildRoute()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <p style="font-size:12px;color:#6E6E73;margin:0 0 14px;">Selecione os clientes que farão parte da rota de hoje, na ordem desejada.</p>
+        <div id="br-list" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;margin-bottom:14px;"></div>
+        <button class="btn-p" onclick="submitBuildRoute()"><i class="fas fa-check"></i>Salvar rota</button>
     </div>
 </div>
 
@@ -638,111 +721,590 @@
             </button>
             <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Novo Pedido</h2>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="stepper" style="margin-bottom:12px;"><div id="ped-step1-bar" class="done"></div><div id="ped-step2-bar"></div></div>
+
+        <div id="ped-step1-head" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div>
-                <label style="font-size:11px;font-weight:700;color:#86868B;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px;">Cliente</label>
-                <select class="inp" id="ped-client" style="cursor:pointer;font-size:13px;padding:11px 12px;"></select>
+                <label class="lbl">Cliente</label>
+                <select class="inp" id="ped-client" style="cursor:pointer;font-size:13px;padding:11px 12px;" onchange="onPedClientChange()"></select>
             </div>
             <div>
-                <label style="font-size:11px;font-weight:700;color:#86868B;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px;">Indústria</label>
-                <select class="inp" id="ped-ind" style="cursor:pointer;font-size:13px;padding:11px 12px;">
-                    <option value="alimentos">Alimentos Brasil</option>
-                    <option value="bebidas">Sul Bebidas</option>
-                </select>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <label class="lbl">Fornecedor</label>
+                    <button id="ped-ind-edit" onclick="toggleIndEdit()" style="font-size:11px;font-weight:700;color:#16A34A;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;">Editar</button>
+                </div>
+                <select class="inp" id="ped-ind" style="cursor:pointer;font-size:13px;padding:11px 12px;" onchange="onPedIndChange()"></select>
             </div>
         </div>
     </div>
 
     <div class="sb">
+      <!-- STEP 1: produtos -->
+      <div id="ped-step1">
       <div class="lg:grid lg:grid-cols-3 lg:items-start" style="gap:24px;">
       <div class="lg:col-span-2">
-        <div class="slabel">Produtos</div>
-        <div class="sbar" style="margin-bottom:12px;">
-            <i class="fas fa-search" style="color:#86868B;font-size:13px;"></i>
-            <input type="text" id="prod-search" placeholder="Buscar produto..." oninput="renderProds()">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="slabel" style="margin-bottom:8px;">Produtos — preço conforme regime tributário</div>
+            <button id="ped-repeat-btn" onclick="repeatLastOrder()" style="display:none;font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:5px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;"><i class="fas fa-rotate-right"></i> Repetir último pedido</button>
         </div>
-
+        <div class="sbar" style="margin-bottom:10px;">
+            <i class="fas fa-search" style="color:#86868B;font-size:13px;"></i>
+            <input type="text" id="prod-search" placeholder="Buscar produto ou SKU..." oninput="renderProds()">
+        </div>
+        <div id="prod-cats" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none;"></div>
         <div id="prod-list" style="background:white;border-radius:14px;overflow:hidden;margin-bottom:16px;border:1px solid #F5F5F7;"></div>
-      </div><!-- /col-span-2 -->
+      </div>
 
         <div id="cart-wrap" class="lg:sticky lg:top-6" style="display:none;">
             <div class="slabel">Resumo do pedido</div>
             <div class="card" style="padding:16px;margin-bottom:12px;">
                 <div id="cart-items"></div>
                 <div style="border-top:1px solid #F5F5F7;padding-top:12px;margin-top:4px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                        <span style="font-size:13px;color:#6E6E73;">Subtotal</span>
-                        <span id="p-sub" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                        <span style="font-size:13px;color:#6E6E73;">Desconto (5%)</span>
-                        <span id="p-disc" style="font-size:13px;font-weight:600;color:#059669;"></span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;">
-                        <span style="font-size:15px;font-weight:700;color:#1D1D1F;">Total</span>
-                        <span id="p-total" style="font-size:19px;font-weight:800;color:#1D1D1F;"></span>
-                    </div>
+                    <div style="display:flex;justify-content:space-between;"><span style="font-size:15px;font-weight:700;color:#1D1D1F;">Subtotal</span><span id="p-sub" style="font-size:17px;font-weight:800;color:#1D1D1F;"></span></div>
                 </div>
             </div>
-
-            <div id="mi" class="mi mi-g" style="margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <i id="mi-icon" class="fas fa-circle-check" style="font-size:18px;"></i>
-                    <div>
-                        <div id="mi-text" style="font-weight:700;font-size:13px;"></div>
-                        <div id="mi-sub" style="font-size:12px;opacity:0.75;margin-top:2px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <button class="btn-p" onclick="confirmOrder()">
-                <i class="fas fa-check-circle"></i>Confirmar pedido
-            </button>
+            <button class="btn-p" onclick="goPedStep2()"><i class="fas fa-arrow-right"></i>Avançar para pagamento</button>
         </div>
-      </div><!-- /grid -->
+      </div>
+      </div>
+
+      <!-- STEP 2: pagamento -->
+      <div id="ped-step2" style="display:none;">
+        <div class="slabel">Forma de pagamento</div>
+        <div id="pay-opts" class="grid grid-cols-2 lg:grid-cols-3" style="gap:8px;margin-bottom:16px;"></div>
+
+        <div class="card" style="padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span style="font-size:13px;font-weight:600;color:#1D1D1F;">Desconto global (%)</span>
+                <input class="inp" id="ped-discount" type="number" min="0" max="100" step="0.5" value="0" style="width:90px;text-align:center;padding:8px;" oninput="updateCart()">
+            </div>
+            <div id="mi" class="mi mi-g"><div style="display:flex;align-items:center;gap:10px;"><i id="mi-icon" class="fas fa-circle-check" style="font-size:18px;"></i><div><div id="mi-text" style="font-weight:700;font-size:13px;"></div><div id="mi-sub" style="font-size:12px;opacity:0.75;margin-top:2px;"></div></div></div></div>
+        </div>
+
+        <div class="card" style="padding:16px;margin-bottom:16px;display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Data de entrega desejada</label><input class="inp" id="ped-delivery" type="date"></div>
+            <div><label class="lbl">Observações do pedido</label><textarea class="inp" id="ped-notes" rows="2" style="resize:none;" placeholder="Ex: entregar até sexta, produto de troca, etc."></textarea></div>
+        </div>
+
+        <div class="card" style="padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:#6E6E73;">Subtotal</span><span id="p-sub2" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#6E6E73;">Desconto</span><span id="p-disc" style="font-size:13px;font-weight:600;color:#059669;"></span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:15px;font-weight:700;color:#1D1D1F;">Total</span><span id="p-total" style="font-size:19px;font-weight:800;color:#1D1D1F;"></span></div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+            <button class="btn-s" onclick="backPedStep1()" style="width:auto;padding:0 20px;"><i class="fas fa-arrow-left"></i></button>
+            <button class="btn-p" onclick="confirmOrder()"><i class="fas fa-check-circle"></i>Confirmar pedido</button>
+        </div>
+      </div>
     </div>
 </div>
 
 <!-- ========== PEDIDO OK ========== -->
 <div class="screen" id="screen-ok">
     <div style="flex:1;width:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:white;text-align:center;">
-        <div class="success-ring">
-            <i class="fas fa-check" style="font-size:42px;color:#16A34A;"></i>
-        </div>
+        <div class="success-ring"><i class="fas fa-check" style="font-size:42px;color:#16A34A;"></i></div>
         <h2 style="font-size:24px;font-weight:800;color:#1D1D1F;margin:24px 0 8px;">Pedido enviado!</h2>
         <p style="font-size:15px;color:#6E6E73;margin:0 0 32px;max-width:280px;line-height:1.6;">Registrado e enviado à indústria com protocolo gerado automaticamente.</p>
 
         <div class="card" style="width:100%;padding:20px;margin-bottom:28px;text-align:left;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F5F5F7;">
-                <span style="font-size:12px;font-weight:600;color:#86868B;text-transform:uppercase;letter-spacing:.04em;">Protocolo</span>
-                <span id="ok-prot" style="font-size:14px;font-weight:700;color:#16A34A;font-family:monospace;"></span>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F5F5F7;"><span style="font-size:12px;font-weight:600;color:#86868B;text-transform:uppercase;letter-spacing:.04em;">Protocolo</span><span id="ok-prot" style="font-size:14px;font-weight:700;color:#16A34A;font-family:monospace;"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#6E6E73;">Cliente</span><span id="ok-cli" style="font-size:13px;font-weight:600;color:#1D1D1F;max-width:180px;text-align:right;"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#6E6E73;">Fornecedor</span><span id="ok-ind" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#6E6E73;">Total</span><span id="ok-total" style="font-size:17px;font-weight:800;color:#1D1D1F;"></span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:13px;color:#6E6E73;">Data/hora</span><span id="ok-dt" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span></div>
+        </div>
+
+        <div style="display:flex;gap:10px;width:100%;margin-bottom:10px;">
+            <button onclick="downloadOkPdf()" style="flex:1;padding:14px;background:#1D1D1F;color:white;border-radius:12px;font-weight:600;font-size:14px;border:none;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-file-pdf"></i>Baixar PDF</button>
+            <button onclick="toast('Pedido enviado para o setor de faturamento!')" style="flex:1;padding:14px;background:#22C55E;color:white;border-radius:12px;font-weight:600;font-size:14px;border:none;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-paper-plane"></i>Faturamento</button>
+        </div>
+        <button onclick="showScreen('dashboard')" class="btn-p"><i class="fas fa-home"></i>Início</button>
+    </div>
+</div>
+
+<!-- ========== TAREFAS ========== -->
+<div class="screen" id="screen-tarefas">
+    <div class="ph">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Tarefas</h2>
+                <div id="tf-subtitle" style="font-size:12px;color:#86868B;margin-top:1px;"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:13px;color:#6E6E73;">Cliente</span>
-                <span id="ok-cli" style="font-size:13px;font-weight:600;color:#1D1D1F;max-width:180px;text-align:right;"></span>
+            <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+                <button onclick="toggleTfView()" id="tf-view-btn" style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;"></button>
+                <button onclick="openNewTask()" style="width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-plus"></i></button>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:13px;color:#6E6E73;">Indústria</span>
-                <span id="ok-ind" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span>
+        </div>
+        <div id="tf-chips-wrap" style="display:none;gap:8px;overflow-x:auto;padding-bottom:4px;">
+            <button class="chip active" onclick="setTfChip('all',this)">Todas</button>
+            <button class="chip" onclick="setTfChip('hoje',this)">Hoje</button>
+            <button class="chip" onclick="setTfChip('pendente',this)">Pendentes</button>
+            <button class="chip" onclick="setTfChip('concluida',this)">Concluídas</button>
+        </div>
+        <div id="tf-member-chips" style="display:none;gap:6px;overflow-x:auto;padding-bottom:4px;margin-top:8px;"></div>
+    </div>
+    <div class="sb">
+        <div id="tf-calendar" class="card" style="padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <button onclick="tfCalMove(-1)" class="qbtn" style="width:32px;height:32px;">‹</button>
+                <span id="tf-cal-label" style="font-size:14px;font-weight:700;color:#1D1D1F;text-transform:capitalize;"></span>
+                <button onclick="tfCalMove(1)" class="qbtn" style="width:32px;height:32px;">›</button>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:13px;color:#6E6E73;">Total</span>
-                <span id="ok-total" style="font-size:17px;font-weight:800;color:#1D1D1F;"></span>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+                <div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">D</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">S</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">T</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">Q</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">Q</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">S</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">S</div>
             </div>
-            <div style="display:flex;justify-content:space-between;">
-                <span style="font-size:13px;color:#6E6E73;">Data/hora</span>
-                <span id="ok-dt" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span>
+            <div id="tf-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+        </div>
+        <div class="slabel" id="tf-cal-day-label"></div>
+        <div id="tf-cal-day-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="tf-list" style="display:none;flex-direction:column;gap:8px;"></div>
+    </div>
+</div>
+
+<!-- ========== NOVA TAREFA MODAL ========== -->
+<div class="modal-overlay" id="modal-newtask">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Nova tarefa</h3>
+            <button onclick="closeNewTask()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Título</label><input class="inp" id="nt-title" placeholder="Ex: Ligar para confirmar pedido"></div>
+            <div>
+                <label class="lbl">Tipo</label>
+                <div class="grid grid-cols-3" style="gap:8px;" id="nt-type-opts"></div>
+            </div>
+            <div><label class="lbl">Data</label><input class="inp" id="nt-date" type="date"></div>
+            <div><label class="lbl">Cliente vinculado</label><select class="inp" id="nt-client"><option value="">Sem cliente vinculado</option></select></div>
+            <div><label class="lbl">Observações</label><textarea class="inp" id="nt-notes" rows="2" style="resize:none;"></textarea></div>
+            <button class="btn-p" onclick="submitNewTask()"><i class="fas fa-check"></i>Criar tarefa</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== LEADS ========== -->
+<div class="screen" id="screen-leads">
+    <div class="ph">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Leads</h2>
+                <div id="leads-subtitle" style="font-size:12px;color:#86868B;margin-top:1px;"></div>
+            </div>
+            <button onclick="openNewLead()" style="width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="sbar" style="margin-bottom:12px;">
+            <i class="fas fa-search" style="color:#86868B;font-size:13px;"></i>
+            <input type="text" id="leads-search" placeholder="Buscar lead..." oninput="renderLeads()">
+        </div>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+            <button class="chip active" onclick="setLeadChip('all',this)">Todos</button>
+            <button class="chip" onclick="setLeadChip('novo',this)">Novo</button>
+            <button class="chip" onclick="setLeadChip('contatado',this)">Contatado</button>
+            <button class="chip" onclick="setLeadChip('qualificado',this)">Qualificado</button>
+            <button class="chip" onclick="setLeadChip('convertido',this)">Convertido</button>
+            <button class="chip" onclick="setLeadChip('perdido',this)">Perdido</button>
+        </div>
+    </div>
+    <div class="sb">
+        <div id="leads-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3" style="gap:10px;"></div>
+    </div>
+</div>
+
+<!-- ========== NOVO LEAD MODAL ========== -->
+<div class="modal-overlay" id="modal-newlead">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Novo lead</h3>
+            <button onclick="closeNewLead()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Nome / Razão Social</label><input class="inp" id="nl-name" placeholder="Nome do lead"></div>
+            <div><label class="lbl">CNPJ</label><input class="inp" id="nl-cnpj" placeholder="00.000.000/0000-00"></div>
+            <div><label class="lbl">Telefone</label><input class="inp" id="nl-phone" placeholder="(11) 90000-0000"></div>
+            <div><label class="lbl">Cidade / Região</label><input class="inp" id="nl-region" placeholder="Ex: Zona Leste, São Paulo"></div>
+            <div><label class="lbl">Observações</label><textarea class="inp" id="nl-notes" rows="2" style="resize:none;"></textarea></div>
+            <button class="btn-p" onclick="submitNewLead()"><i class="fas fa-check"></i>Adicionar lead</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== CONFIGURAÇÕES ========== -->
+<div class="screen" id="screen-config">
+    <div class="ph">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <button onclick="goHome()" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;font-size:14px;"><i class="fas fa-arrow-left"></i></button>
+            <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Configurações</h2>
+        </div>
+    </div>
+    <div class="sb">
+      <div class="lg:grid lg:grid-cols-2" style="gap:24px;">
+      <div>
+        <div class="slabel">Preferências</div>
+        <div class="card" style="padding:6px 16px;margin-bottom:20px;">
+            <div class="set-row">
+                <div><div style="font-size:14px;font-weight:600;color:#1D1D1F;">Notificações push</div><div style="font-size:12px;color:#86868B;margin-top:1px;">Receber alertas de tarefas e inadimplência</div></div>
+                <div class="toggle" id="set-notif-toggle" onclick="toggleSetting('notifications')"><div class="toggle-dot"></div></div>
+            </div>
+            <div class="set-row">
+                <div><div style="font-size:14px;font-weight:600;color:#1D1D1F;">Tema escuro</div><div style="font-size:12px;color:#86868B;margin-top:1px;">Alterna a aparência do aplicativo</div></div>
+                <div class="toggle" id="set-theme-toggle" onclick="toggleSetting('darkTheme')"><div class="toggle-dot"></div></div>
             </div>
         </div>
 
-        <div style="display:flex;gap:10px;width:100%;">
-            <button onclick="toast('Compartilhado via WhatsApp!')" style="flex:1;padding:14px;background:#22C55E;color:white;border-radius:12px;font-weight:600;font-size:14px;border:none;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;">
-                <i class="fab fa-whatsapp" style="font-size:16px;"></i>Compartilhar
-            </button>
-            <button onclick="showScreen('dashboard')" class="btn-p" style="flex:1;border-radius:12px;padding:14px;font-size:14px;">
-                <i class="fas fa-home"></i>Início
-            </button>
+        <div class="slabel">Perfil</div>
+        <div class="card" style="padding:16px;margin-bottom:20px;display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Nome</label><input class="inp" id="cfg-name"></div>
+            <div><label class="lbl">WhatsApp</label><input class="inp" id="cfg-phone"></div>
+            <button class="btn-p" onclick="saveProfile()"><i class="fas fa-check"></i>Salvar perfil</button>
         </div>
+      </div>
+
+      <div>
+        <div class="slabel">Metas e comissão</div>
+        <div class="card" style="padding:16px;margin-bottom:20px;display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Meta de faturamento (R$)</label><input class="inp" id="cfg-goal-rev" type="number" min="0"></div>
+            <div><label class="lbl">Meta de visitas no mês</label><input class="inp" id="cfg-goal-vis" type="number" min="0"></div>
+            <div><label class="lbl">Taxa de comissão (%)</label><input class="inp" id="cfg-comm-rate" type="number" min="0" max="100" step="0.5"></div>
+            <button class="btn-p" onclick="saveGoals()"><i class="fas fa-bullseye"></i>Salvar metas</button>
+        </div>
+
+        <div class="slabel">Dados de demonstração</div>
+        <div class="card" style="padding:16px;">
+            <p style="font-size:12px;color:#6E6E73;margin:0 0 12px;line-height:1.6;">Restaura clientes, pedidos, tarefas e metas para os valores iniciais de demonstração.</p>
+            <button class="btn-s" onclick="resetDemoData()" style="color:#DC2626;border-color:#FECACA;"><i class="fas fa-rotate-left"></i>Resetar dados demo</button>
+        </div>
+      </div>
+      </div>
+    </div>
+</div>
+
+<!-- ========== FINANCEIRO ========== -->
+<div class="screen" id="screen-financeiro">
+    <div class="ph">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <button onclick="showScreen('dashboard')" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;font-size:14px;"><i class="fas fa-arrow-left"></i></button>
+            <div>
+                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Financeiro</h2>
+                <div style="font-size:12px;color:#86868B;margin-top:1px;">Comissões e recebíveis</div>
+            </div>
+        </div>
+    </div>
+    <div class="sb">
+      <div class="lg:grid lg:grid-cols-2" style="gap:24px;">
+      <div>
+        <div style="background:linear-gradient(135deg,#14532D 0%,#16A34A 100%);border-radius:16px;padding:18px;margin-bottom:16px;color:white;">
+            <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:4px;">Comissão estimada do mês</div>
+            <div id="fin-commission" style="font-size:30px;font-weight:800;"></div>
+            <div id="fin-commission-sub" style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:6px;"></div>
+        </div>
+
+        <div class="card" style="padding:16px;margin-bottom:16px;">
+            <div class="slabel" style="margin-bottom:8px;">Projeção do mês</div>
+            <div id="fin-projection" style="font-size:13px;color:#3A3A3C;line-height:1.6;"></div>
+        </div>
+
+        <div class="slabel">Histórico de comissão</div>
+        <div id="fin-history" class="card" style="padding:8px;margin-bottom:16px;"></div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="slabel" style="margin-bottom:8px;">A receber (clientes inadimplentes)</div>
+            <span id="fin-receivable-total" style="font-size:13px;font-weight:800;color:#DC2626;"></span>
+        </div>
+        <div id="fin-receivables" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+      </div>
+    </div>
+</div>
+
+<!-- ========== EQUIPE ========== -->
+<div class="screen" id="screen-equipe">
+    <div class="ph">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <button onclick="showScreen('dashboard')" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;font-size:14px;"><i class="fas fa-arrow-left"></i></button>
+            <div>
+                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Equipe</h2>
+                <div style="font-size:12px;color:#86868B;margin-top:1px;">Painel de inteligência de negócio das suas equipes</div>
+            </div>
+        </div>
+        <div id="equipe-tabs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;"></div>
+    </div>
+    <div class="sb">
+        <div id="equipe-noteam" style="display:none;text-align:center;padding:60px 20px;color:#86868B;">
+            <i class="fas fa-people-group" style="font-size:36px;color:#16A34A;display:block;margin-bottom:12px;"></i>
+            <p style="font-size:14px;margin:0 0 16px;">Você ainda não faz parte de uma equipe.</p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                <button onclick="openNewTeamModal()" class="btn-p" style="width:auto;padding:12px 20px;"><i class="fas fa-plus"></i>Criar equipe</button>
+                <button onclick="openJoinTeamModal()" class="btn-s" style="width:auto;padding:12px 20px;"><i class="fas fa-right-to-bracket"></i>Entrar em equipe</button>
+            </div>
+        </div>
+
+        <div id="equipe-content" style="display:none;">
+            <div id="equipe-team-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px;"></div>
+
+            <div id="equipe-totals" class="grid grid-cols-2 lg:grid-cols-4" style="gap:10px;margin-bottom:20px;"></div>
+
+            <div class="kpi" style="margin-bottom:16px;">
+                <div class="slabel" style="margin-bottom:8px;">Faturamento por membro (mês)</div>
+                <div id="equipe-bi-bars" style="display:flex;flex-direction:column;gap:12px;"></div>
+            </div>
+
+            <div class="slabel">Ranking de metas do mês</div>
+            <div id="equipe-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+
+            <div id="equipe-invites" style="margin-bottom:16px;"></div>
+
+            <div class="kpi" style="margin-bottom:16px;">
+                <div class="slabel" style="margin-bottom:8px;">Atividade recente da equipe (visitas)</div>
+                <div id="equipe-activity" style="display:flex;flex-direction:column;gap:4px;"></div>
+            </div>
+
+            <div id="equipe-perms"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== NOVA EQUIPE MODAL ========== -->
+<div class="modal-overlay" id="modal-new-team">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Nova equipe</h3>
+            <button onclick="closeNewTeamModal()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Nome da equipe</label><input class="inp" id="nt-team-name-input" placeholder="Ex: Equipe Zona Sul"></div>
+            <p style="font-size:11px;color:#86868B;margin:0;">Você se tornará o administrador desta equipe e poderá convidar membros e controlar as permissões de agenda.</p>
+            <button class="btn-p" onclick="submitNewTeam()"><i class="fas fa-check"></i>Criar equipe</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== CONVIDAR PARA EQUIPE MODAL ========== -->
+<div class="modal-overlay" id="modal-team-invite">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Convidar para a equipe</h3>
+            <button onclick="closeTeamInvite()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Nome</label><input class="inp" id="ti-name" placeholder="Nome do representante"></div>
+            <div><label class="lbl">E-mail ou telefone</label><input class="inp" id="ti-contact" placeholder="email@exemplo.com ou (11) 90000-0000"></div>
+            <button class="btn-p" onclick="submitTeamInvite()"><i class="fas fa-paper-plane"></i>Enviar convite</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== ENTRAR EM EQUIPE MODAL ========== -->
+<div class="modal-overlay" id="modal-join-team">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Entrar em equipe</h3>
+            <button onclick="closeJoinTeamModal()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div id="jt-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+</div>
+
+<!-- ========== ANOTAÇÕES ========== -->
+<div class="screen" id="screen-anotacoes">
+    <div class="ph">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Anotações</h2>
+                <div id="notes-subtitle" style="font-size:12px;color:#86868B;margin-top:1px;"></div>
+            </div>
+            <button onclick="openNewNote()" style="width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-plus"></i></button>
+        </div>
+    </div>
+    <div class="sb">
+        <div id="notes-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+</div>
+
+<!-- ========== NOVA ANOTAÇÃO MODAL ========== -->
+<div class="modal-overlay" id="modal-newnote">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Nova anotação</h3>
+            <button onclick="closeNewNote()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Título</label><input class="inp" id="nn-title" placeholder="Ex: Ideia de promoção"></div>
+            <div><label class="lbl">Cliente vinculado (opcional)</label><select class="inp" id="nn-client"><option value="">Sem cliente vinculado</option></select></div>
+            <div><label class="lbl">Texto</label><textarea class="inp" id="nn-text" rows="4" style="resize:none;" placeholder="Escreva sua anotação..."></textarea></div>
+            <button class="btn-p" onclick="submitNewNote()"><i class="fas fa-check"></i>Salvar anotação</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== FORNECEDOR: DASHBOARD ========== -->
+<div class="screen" id="screen-sup-dash">
+    <div class="dash-hero" style="background:linear-gradient(160deg,#052E16 0%,#15803D 60%,#16A34A 100%);padding:24px 20px 56px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+            <div>
+                <span class="badge" style="background:rgba(255,255,255,0.18);color:white;margin-bottom:8px;display:inline-block;">Conta fornecedor</span>
+                <h1 id="sup-org-name" style="color:white;font-size:22px;font-weight:800;margin:4px 0 0;"></h1>
+            </div>
+            <button onclick="openMoreMenu()" style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:50%;border:none;cursor:pointer;color:white;font-size:14px;flex-shrink:0;"><i class="fas fa-bars"></i></button>
+        </div>
+        <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0;">Catálogo, representantes e canais de venda num só lugar.</p>
+    </div>
+    <div class="stat-row">
+        <div class="sc"><div class="sc-icon"><i class="fas fa-people-group"></i></div><div id="sup-reps-count" style="font-size:22px;font-weight:800;color:#1D1D1F;"></div><div style="font-size:11px;color:#86868B;font-weight:600;">Representantes</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-sack-dollar"></i></div><div id="sup-revenue" style="font-size:22px;font-weight:800;color:#1D1D1F;"></div><div style="font-size:11px;color:#86868B;font-weight:600;">Faturamento (mês)</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-boxes-stacked"></i></div><div id="sup-sku-count" style="font-size:22px;font-weight:800;color:#1D1D1F;"></div><div style="font-size:11px;color:#86868B;font-weight:600;">SKUs no catálogo</div></div>
+        <div class="sc" onclick="document.getElementById('sup-indicadores').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;"><div class="sc-icon"><i class="fas fa-chart-pie"></i></div><div id="sup-growth" style="font-size:22px;font-weight:800;color:#1D1D1F;"></div><div style="font-size:11px;color:#86868B;font-weight:600;">Crescimento (mês)</div></div>
+    </div>
+    <div class="sb" style="margin-top:16px;">
+        <button onclick="showScreen('sup-catalogo')" class="btn-p" style="margin-bottom:20px;"><i class="fas fa-boxes-stacked"></i>Gerenciar catálogo</button>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="slabel" style="margin-bottom:8px;">Representantes</div>
+            <button onclick="openInviteRep()" style="font-size:11px;font-weight:700;color:#16A34A;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;"><i class="fas fa-user-plus"></i> Convidar</button>
+        </div>
+        <div id="sup-reps-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
+
+        <div class="slabel">Canais de venda conectados</div>
+        <div class="grid grid-cols-1 md:grid-cols-3" style="gap:10px;margin-bottom:24px;" id="sup-channels"></div>
+
+        <div class="slabel" id="sup-indicadores">Indicadores</div>
+        <div class="kpi" style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span class="slabel" style="margin-bottom:0;">Faturamento — últimos 4 meses</span>
+                <span id="sup-trend-pct" style="font-size:12px;font-weight:700;"></span>
+            </div>
+            <div id="sup-month-trend" style="display:flex;align-items:flex-end;gap:10px;height:90px;"></div>
+        </div>
+        <div class="kpi" style="margin-bottom:12px;">
+            <div class="slabel">Faturamento por representante</div>
+            <div id="sup-rep-bars" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div class="kpi" style="margin-bottom:12px;">
+            <div class="slabel">Top produtos do catálogo (unidades/mês)</div>
+            <div id="sup-top-prods" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+        <div class="kpi" style="margin-bottom:20px;">
+            <div class="slabel">Faturamento por região</div>
+            <div id="sup-region-bars" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== OAUTH MOCK (CONECTAR CANAL) ========== -->
+<div class="modal-overlay" id="modal-oauth">
+    <div class="modal-box" style="max-width:380px;">
+        <div style="text-align:center;margin-bottom:18px;">
+            <div id="oauth-icon" style="width:54px;height:54px;border-radius:16px;background:#F5F5F7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"></div>
+            <h3 id="oauth-title" style="font-size:16px;font-weight:800;color:#1D1D1F;margin:0 0 4px;"></h3>
+            <p style="font-size:12px;color:#86868B;margin:0;">quer se conectar à sua conta RepOS via OAuth 2.0</p>
+        </div>
+        <div style="background:#F5F5F7;border-radius:14px;padding:14px;margin-bottom:16px;">
+            <p style="font-size:11px;font-weight:700;color:#6E6E73;text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;">Este acesso vai poder:</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:flex-start;"><i class="fas fa-check" style="color:#16A34A;font-size:11px;margin-top:2px;"></i><span style="font-size:12px;color:#3A3A3C;">Ler seu catálogo de produtos e estoque</span></div>
+                <div style="display:flex;gap:8px;align-items:flex-start;"><i class="fas fa-check" style="color:#16A34A;font-size:11px;margin-top:2px;"></i><span style="font-size:12px;color:#3A3A3C;">Sincronizar pedidos e vendas automaticamente</span></div>
+            </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+            <input class="inp" id="oauth-email" placeholder="E-mail da conta" type="email">
+            <input class="inp" id="oauth-pass" placeholder="Senha" type="password">
+        </div>
+        <button class="btn-p" onclick="submitOauth()" id="oauth-submit-btn"><i class="fas fa-lock"></i>Autorizar acesso</button>
+        <button onclick="closeOauth()" class="btn-s" style="margin-top:8px;">Cancelar</button>
+    </div>
+</div>
+
+<!-- ========== CONVIDAR REPRESENTANTE MODAL ========== -->
+<div class="modal-overlay" id="modal-invite-rep">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Convidar representante</h3>
+            <button onclick="closeInviteRep()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Nome</label><input class="inp" id="ir-name" placeholder="Nome do representante"></div>
+            <div><label class="lbl">E-mail ou telefone</label><input class="inp" id="ir-contact" placeholder="email@exemplo.com ou (11) 90000-0000"></div>
+            <div><label class="lbl">Região (opcional)</label><input class="inp" id="ir-region" placeholder="Ex: Zona Leste/SP"></div>
+            <button class="btn-p" onclick="submitInviteRep()"><i class="fas fa-paper-plane"></i>Enviar convite</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== FORNECEDOR: CATÁLOGO ========== -->
+<div class="screen" id="screen-sup-catalogo">
+    <div class="ph">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+                <button onclick="showScreen('sup-dash')" style="width:36px;height:36px;border-radius:10px;background:#F5F5F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#3A3A3C;font-size:14px;flex-shrink:0;"><i class="fas fa-arrow-left"></i></button>
+                <div style="min-width:0;"><h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Catálogo</h2><div id="sup-cat-subtitle" style="font-size:12px;color:#86868B;margin-top:1px;"></div></div>
+            </div>
+            <button onclick="openAddProduct()" class="sup-cat-gestor-only" style="display:none;width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-plus"></i></button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+            <button onclick="openImportExcel()" class="sup-cat-gestor-only" style="display:none;font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:'Inter',sans-serif;"><i class="fas fa-file-import"></i> Importar planilha</button>
+            <button onclick="downloadFieldTemplate()" style="font-size:11px;font-weight:700;color:#3A3A3C;background:#F5F5F7;border:1px solid #E5E5EA;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:'Inter',sans-serif;"><i class="fas fa-download"></i> Baixar modelo</button>
+            <button onclick="openProductFields()" class="sup-cat-gestor-only" style="display:none;font-size:11px;font-weight:700;color:#3A3A3C;background:#F5F5F7;border:1px solid #E5E5EA;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:'Inter',sans-serif;"><i class="fas fa-table-columns"></i> Configurar campos</button>
+        </div>
+        <div class="sbar" style="margin-bottom:12px;">
+            <i class="fas fa-search" style="color:#86868B;font-size:13px;"></i>
+            <input type="text" id="sup-cat-search" placeholder="Buscar produto, SKU ou EAN..." oninput="renderSupCatalogo()">
+        </div>
+        <div id="sup-cat-chips" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;"></div>
+    </div>
+    <div class="sb">
+        <div id="sup-cat-list" style="background:white;border-radius:14px;overflow:hidden;border:1px solid #F5F5F7;"></div>
+    </div>
+</div>
+
+<!-- ========== ADICIONAR PRODUTO MODAL ========== -->
+<div class="modal-overlay" id="modal-add-product">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Adicionar produto</h3>
+            <button onclick="closeAddProduct()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Nome do produto</label><input class="inp" id="ap-name" placeholder="Ex: Shampoo Hidratante 250ml"></div>
+            <div class="grid grid-cols-2" style="gap:10px;">
+                <div><label class="lbl">Categoria</label><input class="inp" id="ap-cat" placeholder="Ex: Shampoo"></div>
+                <div><label class="lbl">SKU</label><input class="inp" id="ap-sku" placeholder="Gerado automaticamente" disabled></div>
+            </div>
+            <div><label class="lbl">EAN (opcional)</label><input class="inp" id="ap-ean" placeholder="7890000000000"></div>
+            <div class="grid grid-cols-2" style="gap:10px;">
+                <div><label class="lbl">Preço Simples Nacional (R$)</label><input class="inp" id="ap-sn" type="number" min="0" step="0.01"></div>
+                <div><label class="lbl">Preço Lucro Real/Presumido (R$)</label><input class="inp" id="ap-lr" type="number" min="0" step="0.01"></div>
+            </div>
+            <button class="btn-p" onclick="submitAddProduct()"><i class="fas fa-check"></i>Adicionar ao catálogo</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== CONFIGURAR CAMPOS DO CATÁLOGO MODAL ========== -->
+<div class="modal-overlay" id="modal-product-fields">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Configurar campos do catálogo</h3>
+            <button onclick="closeProductFields()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <p style="font-size:12px;color:#6E6E73;margin:0 0 14px;line-height:1.5;">Defina o nome exato de cada coluna e quais são obrigatórias. Toda planilha enviada por você ou pelos colaboradores precisa usar esses mesmos nomes de coluna.</p>
+        <div id="pf-rows"></div>
+        <button class="btn-p" onclick="submitProductFields()" style="margin-top:6px;"><i class="fas fa-check"></i>Salvar configuração</button>
+    </div>
+</div>
+
+<!-- ========== IMPORTAR PLANILHA MODAL ========== -->
+<div class="modal-overlay" id="modal-import-excel">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Importar planilha de produtos</h3>
+            <button onclick="closeImportExcel()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <p style="font-size:12px;color:#6E6E73;margin:0 0 14px;line-height:1.5;">A planilha (.xlsx ou .csv) precisa ter, na primeira linha, exatamente os nomes de coluna configurados pelo gestor. Baixe o modelo se tiver dúvidas.</p>
+        <input type="file" id="ie-file" accept=".xlsx,.xls,.csv" class="inp" style="padding:10px;margin-bottom:10px;">
+        <div id="ie-status" style="margin-bottom:12px;min-height:18px;"></div>
+        <button class="btn-p" onclick="handleImportExcel()"><i class="fas fa-file-import"></i>Importar produtos</button>
     </div>
 </div>
 
@@ -750,523 +1312,50 @@
 <aside class="sidebar" id="sidebar">
     <div>
         <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 24px;">
-            <div style="width:36px;height:36px;background:#16A34A;border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                <i class="fas fa-bolt" style="color:white;font-size:16px;"></i>
-            </div>
+            <div style="width:36px;height:36px;background:#16A34A;border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-bolt" style="color:white;font-size:16px;"></i></div>
             <span style="font-size:20px;font-weight:800;color:#1D1D1F;letter-spacing:-1px;">RepOS</span>
         </div>
-        <nav style="display:flex;flex-direction:column;gap:4px;">
-            <button class="sidebar-item" id="sb-dash" onclick="showScreen('dashboard')">
-                <i class="fas fa-house"></i><span>Início</span>
-            </button>
-            <button class="sidebar-item" id="sb-cw" onclick="showScreen('carteira')">
-                <i class="fas fa-users"></i><span>Carteira</span>
-            </button>
-            <button class="sidebar-item" id="sb-rt" onclick="showScreen('rota')">
-                <i class="fas fa-route"></i><span>Rota</span>
-            </button>
-            <button class="sidebar-item" id="sb-pd" onclick="showScreen('pedido')">
-                <i class="fas fa-cart-shopping"></i><span>Pedido</span>
-            </button>
+        <nav style="display:flex;flex-direction:column;gap:4px;" id="sidebar-nav-rep">
+            <button class="sidebar-item" id="sb-dash" onclick="showScreen('dashboard')"><i class="fas fa-house"></i><span>Início</span></button>
+            <button class="sidebar-item" id="sb-cw" onclick="showScreen('carteira')"><i class="fas fa-users"></i><span>Carteira</span></button>
+            <button class="sidebar-item" id="sb-leads" onclick="showScreen('leads')"><i class="fas fa-bullseye"></i><span>Leads</span></button>
+            <button class="sidebar-item" id="sb-tf" onclick="showScreen('tarefas')"><i class="fas fa-list-check"></i><span>Tarefas</span></button>
+            <button class="sidebar-item" id="sb-rt" onclick="showScreen('rota')"><i class="fas fa-route"></i><span>Rota</span></button>
+            <button class="sidebar-item" id="sb-pd" onclick="showScreen('pedido')"><i class="fas fa-cart-shopping"></i><span>Pedido</span></button>
+            <button class="sidebar-item" id="sb-fin" onclick="showScreen('financeiro')"><i class="fas fa-sack-dollar"></i><span>Financeiro</span></button>
+            <button class="sidebar-item" id="sb-equipe" onclick="showScreen('equipe')"><i class="fas fa-people-group"></i><span>Equipe</span></button>
+            <button class="sidebar-item" id="sb-notes" onclick="showScreen('anotacoes')"><i class="fas fa-note-sticky"></i><span>Anotações</span></button>
+        </nav>
+        <nav style="display:none;flex-direction:column;gap:4px;" id="sidebar-nav-sup">
+            <button class="sidebar-item" id="sb-sup-dash" onclick="showScreen('sup-dash')"><i class="fas fa-house"></i><span>Início</span></button>
+            <button class="sidebar-item" id="sb-sup-cat" onclick="showScreen('sup-catalogo')"><i class="fas fa-boxes-stacked"></i><span>Catálogo</span></button>
         </nav>
     </div>
     <div style="border-top:1px solid #F5F5F7;padding-top:14px;">
         <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;">
-            <div style="width:34px;height:34px;background:#F0FDF4;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fas fa-user" style="color:#16A34A;font-size:13px;"></i>
-            </div>
-            <div style="min-width:0;">
-                <div id="sb-username" style="font-size:13px;font-weight:700;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-                <div style="font-size:11px;color:#86868B;">Representante</div>
-            </div>
+            <div style="width:34px;height:34px;background:#F0FDF4;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-user" style="color:#16A34A;font-size:13px;"></i></div>
+            <div style="min-width:0;"><div id="sb-username" style="font-size:13px;font-weight:700;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div><div id="sb-userrole" style="font-size:11px;color:#86868B;"></div></div>
         </div>
-        <button class="sidebar-item" onclick="logout()" style="color:#DC2626;">
-            <i class="fas fa-right-from-bracket"></i><span>Sair</span>
-        </button>
+        <button class="sidebar-item" id="sb-cfg" onclick="showScreen('config')"><i class="fas fa-gear"></i><span>Configurações</span></button>
+        <button class="sidebar-item" onclick="logout()" style="color:#DC2626;"><i class="fas fa-right-from-bracket"></i><span>Sair</span></button>
     </div>
 </aside>
 
 <!-- ========== BOTTOM NAV ========== -->
 <nav class="bnav" id="bnav">
-    <button class="bnav-item" id="bn-dash" onclick="showScreen('dashboard')">
-        <i class="fas fa-house"></i><span>Início</span>
-    </button>
-    <button class="bnav-item" id="bn-cw" onclick="showScreen('carteira')">
-        <i class="fas fa-users"></i><span>Carteira</span>
-    </button>
-    <button class="bnav-item" id="bn-rt" onclick="showScreen('rota')">
-        <i class="fas fa-route"></i><span>Rota</span>
-    </button>
-    <button class="bnav-item" id="bn-pd" onclick="showScreen('pedido')">
-        <i class="fas fa-cart-shopping"></i><span>Pedido</span>
-    </button>
+    <button class="bnav-item nav-rep" id="bn-dash" onclick="showScreen('dashboard')"><i class="fas fa-house"></i><span>Início</span></button>
+    <button class="bnav-item nav-rep" id="bn-cw" onclick="showScreen('carteira')"><i class="fas fa-users"></i><span>Carteira</span></button>
+    <button class="bnav-item nav-rep" id="bn-leads" onclick="showScreen('leads')"><i class="fas fa-bullseye"></i><span>Leads</span></button>
+    <button class="bnav-item nav-rep" id="bn-tf" onclick="showScreen('tarefas')"><i class="fas fa-list-check"></i><span>Tarefas</span></button>
+    <button class="bnav-item nav-rep" id="bn-pd" onclick="showScreen('pedido')"><i class="fas fa-cart-shopping"></i><span>Pedido</span></button>
+
+    <button class="bnav-item nav-sup" id="bn-sup-dash" onclick="showScreen('sup-dash')" style="display:none;"><i class="fas fa-house"></i><span>Início</span></button>
+    <button class="bnav-item nav-sup" id="bn-sup-cat" onclick="showScreen('sup-catalogo')" style="display:none;"><i class="fas fa-boxes-stacked"></i><span>Catálogo</span></button>
+    <button class="bnav-item nav-sup" onclick="openMoreMenu()" style="display:none;"><i class="fas fa-bars"></i><span>Mais</span></button>
 </nav>
 
 </div><!-- /app -->
-
-<script>
-// ======================
-// STORAGE
-// ======================
-const S = {
-    g: k => JSON.parse(localStorage.getItem('rOS_'+k)||'null'),
-    s: (k,v) => localStorage.setItem('rOS_'+k, JSON.stringify(v)),
-    d: k => localStorage.removeItem('rOS_'+k),
-    users: () => S.g('users')||[],
-    addUser: u => { const a=S.users(); a.push(u); S.s('users',a); },
-    findUser: (e,p) => S.users().find(u=>u.email===e&&u.pass===p),
-    session: () => S.g('session'),
-    login: u => S.s('session',u),
-    logout: () => S.d('session'),
-    clients: () => S.g('clients')||[],
-    orders: () => S.g('orders')||[],
-    addOrder: o => { const a=S.orders(); a.unshift(o); S.s('orders',a); }
-};
-
-// ======================
-// STATE
-// ======================
-let currentClient = null;
-let fromClient = false;
-let cwFilter = 'all';
-let cart = {};
-let prodFilter = '';
-
-// ======================
-// MOCK DATA
-// ======================
-const PRODS = [
-    {id:1, name:'Arroz Branco 5kg',       price:28.90, unit:'cx 12un'},
-    {id:2, name:'Feijão Carioca 1kg',     price:9.50,  unit:'cx 20un'},
-    {id:3, name:'Óleo de Soja 900ml',     price:7.80,  unit:'cx 24un'},
-    {id:4, name:'Açúcar Refinado 1kg',    price:5.20,  unit:'cx 30un'},
-    {id:5, name:'Macarrão Espaguete 500g',price:4.90,  unit:'cx 24un'},
-    {id:6, name:'Farinha de Trigo 1kg',   price:4.50,  unit:'cx 20un'},
-    {id:7, name:'Leite Integral 1L',      price:5.80,  unit:'cx 12un'},
-    {id:8, name:'Molho de Tomate 340g',   price:3.20,  unit:'cx 24un'},
-];
-
-const IND = { alimentos: 'Alimentos Brasil', bebidas: 'Sul Bebidas' };
-
-function seed() {
-    if (S.g('seeded')) return;
-    S.addUser({id:1,name:'João Representante',email:'demo@reposapp.com',pass:'demo123',phone:'(11) 99999-0000'});
-    const d = n => new Date(Date.now()-n*864e5).toISOString();
-    S.s('clients',[
-        {id:1,name:'Mercado São João',      cnpj:'12.345.678/0001-90',seg:'Supermercado',addr:'Rua das Flores, 123',contact:'Carlos Mendes',phone:'(11) 99123-4567',cls:'A',lastDate:d(15),lastVal:3200,owe:0,   oweDays:0},
-        {id:2,name:'Supermercado Central',  cnpj:'98.765.432/0001-10',seg:'Supermercado',addr:'Av. Principal, 456',  contact:'Ana Paula',    phone:'(11) 98765-4321',cls:'A',lastDate:d(45),lastVal:8500,owe:1200,oweDays:12},
-        {id:3,name:'Padaria Bella Vista',   cnpj:'11.222.333/0001-44',seg:'Padaria',     addr:'Rua do Pão, 789',     contact:'José Silva',   phone:'(11) 97654-3210',cls:'B',lastDate:d(5), lastVal:980, owe:0,   oweDays:0},
-        {id:4,name:'Mercearia do Bairro',   cnpj:'55.666.777/0001-22',seg:'Mercearia',   addr:'Rua Pequena, 10',     contact:'Maria Santos', phone:'(11) 96543-2109',cls:'C',lastDate:d(30),lastVal:420, owe:350, oweDays:8},
-    ]);
-    S.s('seeded',true);
-}
-
-// ======================
-// NAVIGATION
-// ======================
-const BNAV_SCREENS = ['dashboard','carteira','rota','pedido'];
-const NAV_IDS = {
-    dashboard: ['bn-dash','sb-dash'],
-    carteira:  ['bn-cw','sb-cw'],
-    rota:      ['bn-rt','sb-rt'],
-    pedido:    ['bn-pd','sb-pd']
-};
-const AUTH_SCREENS = ['dashboard','carteira','detail','rota','pedido','ok'];
-
-function showScreen(name) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-'+name)?.classList.add('active');
-
-    const isAuth = AUTH_SCREENS.includes(name);
-    document.getElementById('app').classList.toggle('auth', isAuth);
-
-    const bnav = document.getElementById('bnav');
-    const showNav = isAuth && name !== 'ok';
-    bnav.style.display = showNav ? 'flex' : 'none';
-
-    document.querySelectorAll('.bnav-item, .sidebar-item').forEach(b => b.classList.remove('active'));
-    (NAV_IDS[name]||[]).forEach(id => document.getElementById(id)?.classList.add('active'));
-
-    const u = S.session();
-    const sbu = document.getElementById('sb-username');
-    if (sbu) sbu.textContent = u ? u.name : '';
-
-    window.scrollTo(0,0);
-
-    const loaders = {
-        dashboard: loadDash,
-        carteira: loadCW,
-        rota: loadRota,
-        pedido: loadPedido
-    };
-    loaders[name]?.();
-}
-
-// ======================
-// AUTH
-// ======================
-function handleLogin() {
-    const e = document.getElementById('li-email').value.trim();
-    const p = document.getElementById('li-pass').value;
-    if (!e||!p) return toast('Preencha todos os campos');
-    const u = S.findUser(e,p);
-    if (!u) return toast('E-mail ou senha incorretos');
-    S.login(u);
-    showScreen('dashboard');
-}
-
-function handleRegister() {
-    const name = document.getElementById('rg-name').value.trim();
-    const email = document.getElementById('rg-email').value.trim();
-    const phone = document.getElementById('rg-phone').value.trim();
-    const pass = document.getElementById('rg-pass').value;
-    if (!name||!email||!pass) return toast('Preencha todos os campos');
-    if (pass.length < 6) return toast('Senha deve ter mínimo 6 caracteres');
-    if (S.users().find(u=>u.email===email)) return toast('E-mail já cadastrado');
-    const u = {id:Date.now(),name,email,phone,pass};
-    S.addUser(u); S.login(u);
-    toast('Conta criada! Bem-vindo ao RepOS');
-    setTimeout(()=>showScreen('dashboard'),700);
-}
-
-function logout() {
-    S.logout();
-    showScreen('login');
-}
-
-// ======================
-// DASHBOARD
-// ======================
-function loadDash() {
-    const u = S.session();
-    if (!u) return showScreen('login');
-    const clients = S.clients();
-    const orders = S.orders();
-    const today = new Date();
-
-    document.getElementById('dash-name').textContent = u.name.split(' ')[0];
-    document.getElementById('dash-date').textContent = today.toLocaleDateString('pt-BR',{day:'numeric',month:'short'});
-
-    document.getElementById('dash-nc').textContent = clients.length;
-    document.getElementById('dash-np').textContent = orders.length;
-
-    const pct = 67;
-    document.getElementById('dash-mpct').textContent = pct+'%';
-    document.getElementById('dash-mval').textContent = 'R$ 18.700 realizados';
-    document.getElementById('dash-mtgt').textContent = 'Meta: R$ 28.000';
-    setTimeout(()=>{ document.getElementById('dash-mbar').style.width = pct+'%'; },100);
-
-    // Sort by priority
-    const sorted = [...clients].sort((a,b)=>{
-        const sc = c=>(c.cls==='A'?30:c.cls==='B'?20:10)+(c.owe>0?20:0)+Math.floor((Date.now()-new Date(c.lastDate))/864e5)*0.5;
-        return sc(b)-sc(a);
-    });
-
-    const vl = document.getElementById('dash-vlist');
-    vl.innerHTML = sorted.slice(0,3).map(c=>{
-        const d = Math.floor((Date.now()-new Date(c.lastDate))/864e5);
-        const col = d>30?'#DC2626':d>14?'#D97706':'#059669';
-        const bg  = d>30?'#FEF2F2':d>14?'#FFFBEB':'#F0FDF4';
-        return `<div class="client-card" onclick="openClient(${c.id})">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                    <div style="width:38px;height:38px;background:${bg};border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-store" style="color:${col};font-size:15px;"></i>
-                    </div>
-                    <div style="min-width:0;">
-                        <div style="font-size:14px;font-weight:600;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</div>
-                        <div style="font-size:12px;color:#6E6E73;">Sem compra há <b style="color:${col};">${d} dias</b></div>
-                    </div>
-                </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-                    <span class="badge badge-${c.cls.toLowerCase()}">${c.cls}</span>
-                    ${c.owe>0?`<span style="font-size:10px;color:#DC2626;font-weight:700;">Inadimplente</span>`:''}
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-
-    const al = document.getElementById('dash-alist');
-    const ow = clients.filter(c=>c.owe>0);
-    al.innerHTML = ow.length===0
-        ? `<div style="text-align:center;padding:20px 0;color:#86868B;font-size:13px;"><i class="fas fa-check-circle" style="font-size:26px;color:#16A34A;display:block;margin-bottom:8px;"></i>Nenhuma inadimplência ativa</div>`
-        : ow.map(c=>`<div class="overdue" onclick="openClient(${c.id})" style="cursor:pointer;">
-            <div style="width:36px;height:36px;background:#FEE2E2;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:14px;"></i>
-            </div>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:600;color:#1D1D1F;">${c.name}</div>
-                <div style="font-size:12px;color:#EF4444;margin-top:2px;">R$ ${c.owe.toLocaleString('pt-BR',{minimumFractionDigits:2})} em aberto · ${c.oweDays} dias</div>
-            </div>
-            <i class="fas fa-chevron-right" style="color:#C7C7CC;font-size:11px;"></i>
-        </div>`).join('');
-}
-
-// ======================
-// CARTEIRA
-// ======================
-function loadCW() {
-    const clients = S.clients();
-    document.getElementById('cw-subtitle').textContent = clients.length + ' clientes na carteira';
-    renderClients();
-}
-
-function renderClients() {
-    const clients = S.clients();
-    const q = (document.getElementById('cw-search')?.value||'').toLowerCase();
-    const list = document.getElementById('cw-list');
-
-    const f = clients.filter(c=>{
-        const mf = cwFilter==='all'||(cwFilter==='overdue'?c.owe>0:c.cls===cwFilter);
-        const ms = !q||c.name.toLowerCase().includes(q)||c.cnpj.includes(q);
-        return mf&&ms;
-    });
-
-    if (!f.length) {
-        list.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:50px 0;color:#86868B;"><i class="fas fa-users-slash" style="font-size:32px;margin-bottom:12px;display:block;"></i><div style="font-size:15px;font-weight:600;">Nenhum cliente encontrado</div></div>`;
-        return;
-    }
-
-    list.innerHTML = f.map(c=>{
-        const d = Math.floor((Date.now()-new Date(c.lastDate))/864e5);
-        const dc = d>30?'#DC2626':d>14?'#D97706':'#059669';
-        return `<div class="client-card" onclick="openClient(${c.id})">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-                <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
-                        <span style="font-size:15px;font-weight:700;color:#1D1D1F;">${c.name}</span>
-                        <span class="badge badge-${c.cls.toLowerCase()}">${c.cls}</span>
-                        ${c.owe>0?`<span style="width:7px;height:7px;background:#EF4444;border-radius:50%;display:inline-block;"></span>`:''}
-                    </div>
-                    <div style="font-size:12px;color:#86868B;margin-bottom:8px;">${c.seg} · ${c.cnpj}</div>
-                    <div style="display:flex;gap:20px;">
-                        <div>
-                            <div style="font-size:10px;color:#86868B;font-weight:600;">ÚLTIMO PEDIDO</div>
-                            <div style="font-size:13px;font-weight:700;color:${dc};">${d} dias atrás</div>
-                        </div>
-                        ${c.owe>0
-                            ?`<div><div style="font-size:10px;color:#86868B;font-weight:600;">EM ABERTO</div><div style="font-size:13px;font-weight:700;color:#DC2626;">R$ ${c.owe.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>`
-                            :`<div><div style="font-size:10px;color:#86868B;font-weight:600;">TICKET MÉDIO</div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">R$ ${c.lastVal.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div></div>`
-                        }
-                    </div>
-                </div>
-                <i class="fas fa-chevron-right" style="color:#C7C7CC;font-size:11px;margin-top:4px;"></i>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function setChip(f,el) {
-    cwFilter=f;
-    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-    el.classList.add('active');
-    renderClients();
-}
-
-// ======================
-// DETAIL / BRIEFING
-// ======================
-function openClient(id) {
-    const c = S.clients().find(x=>x.id===id);
-    if (!c) return;
-    currentClient = c;
-
-    const d = Math.floor((Date.now()-new Date(c.lastDate))/864e5);
-
-    document.getElementById('d-name').textContent = c.name;
-    document.getElementById('d-seg').textContent = c.seg+' · '+c.addr;
-    const b = document.getElementById('d-badge');
-    b.textContent='Curva '+c.cls; b.className='badge badge-'+c.cls.toLowerCase();
-    document.getElementById('d-cnpj').textContent = c.cnpj;
-    document.getElementById('d-contact').textContent = c.contact;
-    document.getElementById('d-phone').textContent = c.phone;
-
-    const od = document.getElementById('d-overdue');
-    if (c.owe>0) {
-        od.style.display='flex';
-        document.getElementById('d-ov-val').textContent='R$ '+c.owe.toLocaleString('pt-BR',{minimumFractionDigits:2})+' em aberto';
-        document.getElementById('d-ov-days').textContent='Vencido há '+c.oweDays+' dias — aborde com cautela';
-    } else od.style.display='none';
-
-    document.getElementById('d-days').textContent=d;
-    document.getElementById('d-lval').textContent='R$ '+c.lastVal.toLocaleString('pt-BR',{minimumFractionDigits:0});
-
-    let sug;
-    if (c.owe>0) sug='Cliente com saldo em aberto. Regularize antes de oferecer novo pedido.';
-    else if (d>30) sug='Sem compra há mais de 30 dias — risco de perda. Aborde com condição especial para reativar.';
-    else if (d>14) sug='Janela ideal para novo pedido. Apresente novidades e reposição dos itens anteriores.';
-    else sug='Cliente ativo e em dia. Foque em ampliar mix de produtos e aumentar ticket médio.';
-    document.getElementById('d-suggest').textContent=sug;
-
-    document.getElementById('d-odate').textContent=new Date(c.lastDate).toLocaleDateString('pt-BR');
-    document.getElementById('d-oprods').textContent='Arroz 5kg × 4 · Feijão 1kg × 6 · Óleo 900ml × 12';
-    document.getElementById('d-ototal').textContent='R$ '+c.lastVal.toLocaleString('pt-BR',{minimumFractionDigits:2});
-
-    document.getElementById('detail-back').onclick = () => showScreen('carteira');
-    showScreen('detail');
-}
-
-function goOrder() {
-    fromClient=true;
-    showScreen('pedido');
-    setTimeout(()=>{
-        const sel=document.getElementById('ped-client');
-        if(sel&&currentClient) sel.value=currentClient.id;
-    },50);
-}
-
-// ======================
-// ROTA
-// ======================
-function loadRota() {
-    const clients = S.clients();
-    const today = new Date();
-    document.getElementById('rota-date').textContent=today.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
-    document.getElementById('rota-c').textContent=clients.length+' paradas';
-
-    const sorted=[...clients].sort((a,b)=>{
-        const sc=c=>(c.cls==='A'?30:c.cls==='B'?20:10)+(c.owe>0?15:0)+Math.floor((Date.now()-new Date(c.lastDate))/864e5)*0.3;
-        return sc(b)-sc(a);
-    });
-
-    const cols=['#16A34A','#15803D','#22C55E','#4ADE80'];
-    const dists=['4,2 km','6,8 km','12,1 km','18,4 km'];
-    const times=['09:00','10:30','12:00','14:30'];
-
-    document.getElementById('rota-list').innerHTML=sorted.map((c,i)=>{
-        const d=Math.floor((Date.now()-new Date(c.lastDate))/864e5);
-        return `<div class="ri" onclick="openClient(${c.id})">
-            <div style="width:36px;height:36px;background:${cols[i]};border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:800;flex-shrink:0;">${i+1}</div>
-            <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                    <span style="font-size:14px;font-weight:600;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</span>
-                    <span class="badge badge-${c.cls.toLowerCase()}">${c.cls}</span>
-                </div>
-                <div style="font-size:12px;color:#86868B;">${c.addr} · ${d}d sem compra</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0;">
-                <div style="font-size:13px;font-weight:700;color:#1D1D1F;">${times[i]}</div>
-                <div style="font-size:11px;color:#86868B;">${dists[i]}</div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-// ======================
-// PEDIDO
-// ======================
-function loadPedido() {
-    cart={};
-    const sel=document.getElementById('ped-client');
-    sel.innerHTML=S.clients().map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-    if(fromClient&&currentClient) sel.value=currentClient.id;
-    document.getElementById('ped-back').onclick=()=>{
-        if(fromClient&&currentClient){fromClient=false;showScreen('detail');}
-        else showScreen('dashboard');
-    };
-    prodFilter='';
-    document.getElementById('prod-search').value='';
-    renderProds();
-    updateCart();
-}
-
-function renderProds() {
-    prodFilter=(document.getElementById('prod-search')?.value||'').toLowerCase();
-    const f=PRODS.filter(p=>!prodFilter||p.name.toLowerCase().includes(prodFilter));
-    document.getElementById('prod-list').innerHTML=f.map(p=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F5F5F7;">
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:600;color:#1D1D1F;">${p.name}</div>
-                <div style="font-size:11px;color:#86868B;">${p.unit}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                <span style="font-size:14px;font-weight:700;color:#16A34A;">R$ ${p.price.toFixed(2)}</span>
-                ${(cart[p.id]||0)===0
-                    ?`<button onclick="addCart(${p.id})" style="width:30px;height:30px;background:#16A34A;color:white;border:none;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;line-height:1;">+</button>`
-                    :`<div style="display:flex;align-items:center;gap:5px;">
-                        <button onclick="rmCart(${p.id})" class="qbtn">−</button>
-                        <span style="font-size:15px;font-weight:800;color:#1D1D1F;min-width:22px;text-align:center;">${cart[p.id]}</span>
-                        <button onclick="addCart(${p.id})" class="qbtn" style="background:#F0FDF4;border-color:#BBF7D0;">+</button>
-                    </div>`
-                }
-            </div>
-        </div>`).join('');
-}
-
-function addCart(id){cart[id]=(cart[id]||0)+1;renderProds();updateCart();}
-function rmCart(id){if(cart[id]>0)cart[id]--;if(cart[id]===0)delete cart[id];renderProds();updateCart();}
-
-function updateCart() {
-    const items=Object.entries(cart);
-    const cw=document.getElementById('cart-wrap');
-    if(!items.length){cw.style.display='none';return;}
-    cw.style.display='block';
-
-    let sub=0;
-    document.getElementById('cart-items').innerHTML=items.map(([id,qty])=>{
-        const p=PRODS.find(p=>p.id===parseInt(id));
-        const t=p.price*qty; sub+=t;
-        return `<div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:13px;color:#3A3A3C;">${p.name} × ${qty}</span>
-            <span style="font-size:13px;font-weight:600;color:#1D1D1F;">R$ ${t.toFixed(2)}</span>
-        </div>`;
-    }).join('');
-
-    const disc=sub*0.05, total=sub-disc;
-    document.getElementById('p-sub').textContent='R$ '+sub.toFixed(2);
-    document.getElementById('p-disc').textContent='−R$ '+disc.toFixed(2);
-    document.getElementById('p-total').textContent='R$ '+total.toFixed(2);
-
-    const mi=document.getElementById('mi'),icon=document.getElementById('mi-icon'),
-          txt=document.getElementById('mi-text'),sub2=document.getElementById('mi-sub');
-    if(total>500){
-        mi.className='mi mi-g'; icon.className='fas fa-circle-check';
-        txt.textContent='Margem excelente ✓'; sub2.textContent='Desconto dentro da política comercial';
-    } else if(total>150){
-        mi.className='mi mi-y'; icon.className='fas fa-triangle-exclamation';
-        txt.textContent='Margem aceitável ⚠'; sub2.textContent='Adicione mais itens para melhorar a margem';
-    } else {
-        mi.className='mi mi-r'; icon.className='fas fa-circle-xmark';
-        txt.textContent='Abaixo do mínimo recomendado'; sub2.textContent='Valor mínimo recomendado: R$ 150,00';
-    }
-}
-
-function confirmOrder() {
-    const items=Object.entries(cart);
-    if(!items.length) return toast('Adicione produtos ao pedido');
-    const cid=parseInt(document.getElementById('ped-client').value);
-    const ikey=document.getElementById('ped-ind').value;
-    const cli=S.clients().find(c=>c.id===cid);
-    let sub=0;
-    items.forEach(([id,qty])=>{const p=PRODS.find(p=>p.id===parseInt(id));sub+=p.price*qty;});
-    const total=sub*0.95;
-    const o={id:'REP'+Date.now(),clientId:cid,clientName:cli?.name||'—',ind:IND[ikey],total,date:new Date().toISOString()};
-    S.addOrder(o);
-    document.getElementById('ok-prot').textContent='#'+o.id.slice(-8).toUpperCase();
-    document.getElementById('ok-cli').textContent=o.clientName;
-    document.getElementById('ok-ind').textContent=o.ind;
-    document.getElementById('ok-total').textContent='R$ '+total.toFixed(2);
-    document.getElementById('ok-dt').textContent=new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    cart={};fromClient=false;
-    showScreen('ok');
-}
-
-// ======================
-// TOAST
-// ======================
-function toast(msg) {
-    const t=document.getElementById('toast');
-    t.textContent=msg; t.classList.add('show');
-    clearTimeout(t._timer);
-    t._timer=setTimeout(()=>t.classList.remove('show'),2500);
-}
-
-// ======================
-// INIT
-// ======================
-seed();
-const u=S.session();
-showScreen(u?'dashboard':'login');
-</script>
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
 </body>
 </html>
