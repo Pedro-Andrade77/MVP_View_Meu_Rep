@@ -50,6 +50,9 @@ const S = {
     // ---- Configuração de campos do catálogo por organização (fornecedor) ----
     productFields: orgId => S.g('productFields_'+orgId)||DEFAULT_PRODUCT_FIELDS,
     setProductFields: (orgId,fields) => S.s('productFields_'+orgId,fields),
+    // ---- Tokens de formulário público já utilizados (garante envio único por link) ----
+    usedFormTokens: () => S.g('usedFormTokens')||[],
+    markFormTokenUsed: token => { const a=S.usedFormTokens(); if(!a.includes(token)){ a.push(token); S.s('usedFormTokens',a); } },
 };
 
 // ======================
@@ -60,6 +63,11 @@ let fromClient = false;
 let cwFilter = 'all';
 let tfFilter = 'all';
 let cart = {};
+let cartDiscounts = {};
+let pdFilter = 'all';
+let shareFlowPending = false;
+let formsCart = {};
+let formsProdCatFilter = '';
 let prodFilter = '';
 let prodCatFilter = '';
 let editingTaskId = null;
@@ -99,60 +107,60 @@ const PRODS_GENERIC = [
 // Catálogo real da Refer Distribuidora (extraído de TABELA DE PREÇO SIMPLES NACIONAL.xlsx /
 // TABELA DE PREÇOS LUCRO REAL E PRESUMIDO.xlsx) — fornecedor de demonstração.
 const PRODS_REFER = [
-    {id:100, ind:'refer', sku:'AMD-5239', ean:7896852627310, name:'Agua Oxigenada 10 Volumes Amend Color Intensy 75Ml', categoria:'Água Oxigenada', unit:'un', priceSN:7.48, priceLR:6.38},
-    {id:101, ind:'refer', sku:'AMD-5235', ean:7896852627273, name:'Agua Oxigenada 10 Volumes Amend Color Intensy 950Ml', categoria:'Água Oxigenada', unit:'un', priceSN:32.91, priceLR:28.05},
-    {id:102, ind:'refer', sku:'AMD-5179', ean:7896852627372, name:'Agua Oxigenada 20 Volumes Color Delicate 75Ml', categoria:'Água Oxigenada', unit:'un', priceSN:7.87, priceLR:6.70},
-    {id:103, ind:'refer', sku:'AMD-5177', ean:7896852627358, name:'Agua Oxigenada 20 Volumes Color Delicate 950Ml', categoria:'Água Oxigenada', unit:'un', priceSN:32.91, priceLR:28.05},
-    {id:104, ind:'refer', sku:'AMD-5249', ean:7896852629031, name:'Ampolas Superdoses De Reparação Amend Essencial Cronograma Capilar', categoria:'Ampola', unit:'un', priceSN:33.59, priceLR:28.62},
-    {id:105, ind:'refer', sku:'AMD-5342', ean:7896852625255, name:'Balm Amend Millenar Óleos Gregos', categoria:'Balm', unit:'un', priceSN:42.28, priceLR:36.03},
-    {id:106, ind:'refer', sku:'AMD-5288', ean:7896852630617, name:'Balm Selante Nutritivo Amend Millenar Óleos Árabes 180ML', categoria:'Balm', unit:'un', priceSN:36.89, priceLR:31.44},
-    {id:107, ind:'refer', sku:'AMD-5416', ean:7896852628843, name:'Balm Selante Millenar Óleos Japoneses 180ML', categoria:'Balm', unit:'un', priceSN:36.89, priceLR:31.44},
-    {id:108, ind:'refer', sku:'AMD-5332', ean:7896852618998, name:'Balm Oleos Indianos Millenar 180G', categoria:'Balm', unit:'un', priceSN:36.89, priceLR:31.44},
-    {id:109, ind:'refer', sku:'AMD-5229', ean:7896852613931, name:'Coloracao 0.2 Violeta Intencificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
-    {id:110, ind:'refer', sku:'AMD-5232', ean:7896852618080, name:'Coloracao 0.43 Cobre Intencificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
-    {id:111, ind:'refer', sku:'AMD-5227', ean:7896852613047, name:'Coloracao 0.6 Vermelho Intensificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
-    {id:112, ind:'refer', sku:'AMD-5228', ean:7896852613894, name:'Coloracao 01 Cinza Intensificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
-    {id:113, ind:'refer', sku:'AMD-5372', ean:7896852628324, name:'Condicionador Equilibrante Expertise Oleosidade Equilibrada 250ML', categoria:'Condicionadores', unit:'un', priceSN:38.59, priceLR:32.89},
-    {id:114, ind:'refer', sku:'AMD-5389', ean:7896852628683, name:'Condicionador Doador De Volume Expertise Volume Absoluto 250ML', categoria:'Condicionadores', unit:'un', priceSN:38.59, priceLR:32.89},
-    {id:115, ind:'refer', sku:'AMD-5358', ean:7896852627907, name:'Condicionador Hidratante E Fortalecedor Amend Expertise Hidratação & Força 250ML', categoria:'Condicionadores', unit:'un', priceSN:35.88, priceLR:30.58},
-    {id:116, ind:'refer', sku:'AMD-5374', ean:7896852616079, name:'Condicionador Intensificador Pos Progressiva Expertise 250Ml', categoria:'Condicionadores', unit:'un', priceSN:35.88, priceLR:30.58},
-    {id:117, ind:'refer', sku:'AMD-4020', ean:7896852612804, name:'Creme Relaxante Cabelos Cacheados Ou Crespos Gold Black 500G', categoria:'Cremes', unit:'un', priceSN:69.83, priceLR:59.51},
-    {id:118, ind:'refer', sku:'AMD-5397', ean:7896852628645, name:'Creme Para Pentear Gold Black Hidratação Nutritiva 250ML', categoria:'Cremes', unit:'un', priceSN:17.87, priceLR:15.23},
-    {id:119, ind:'refer', sku:'AMD-5376', ean:7896852616437, name:'Creme De Pentear Defrizante Pos Progressiva Expertise 180G', categoria:'Cremes', unit:'un', priceSN:35.57, priceLR:30.32},
-    {id:120, ind:'refer', sku:'AMD-5369', ean:7896852616215, name:'Creme Disciplinante Nutritivo Marula Fabulous Expertise 180G', categoria:'Cremes', unit:'un', priceSN:35.57, priceLR:30.32},
-    {id:121, ind:'refer', sku:'AMD-5164', ean:7896852627433, name:'Fluido Antiumidade Amend Blindagem Essencial 180Ml', categoria:'Fluídos', unit:'un', priceSN:71.53, priceLR:60.97},
-    {id:122, ind:'refer', sku:'AMD-5292', ean:7896852628102, name:'Fluído Restaurador Amend Essencial Multibenefícios 180ML', categoria:'Fluídos', unit:'un', priceSN:71.53, priceLR:60.97},
-    {id:123, ind:'refer', sku:'AMD-5175', ean:7896852630556, name:'Fluído Revitalizante Day After Amend Cachos 180ML', categoria:'Fluídos', unit:'un', priceSN:29.85, priceLR:25.45},
-    {id:124, ind:'refer', sku:'AMD-5408', ean:7896852622322, name:'Fluido Reconstrutor Luxe Creations Blonde Care 180Ml', categoria:'Fluídos', unit:'un', priceSN:39.29, priceLR:33.49},
-    {id:125, ind:'refer', sku:'AMD-5338', ean:7896852619407, name:'Hair Butter Mascara Amend Millenar Oleos De Madagascar 300G', categoria:'Hair Butter e Spray', unit:'un', priceSN:48.97, priceLR:41.74},
-    {id:126, ind:'refer', sku:'AMD-5335', ean:7896852619025, name:'Hair Butter Mascara Oleos Marroquinos 300G', categoria:'Hair Butter e Spray', unit:'un', priceSN:48.73, priceLR:41.53},
-    {id:127, ind:'refer', sku:'AMD-5419', ean:7896852611548, name:'Hair Spray Forte Valorize 400Ml', categoria:'Hair Butter e Spray', unit:'un', priceSN:38.24, priceLR:32.59},
-    {id:128, ind:'refer', sku:'AMD-5420', ean:7896852611555, name:'Hair Spray Ultraforte Valorize 400Ml', categoria:'Hair Butter e Spray', unit:'un', priceSN:37.83, priceLR:32.24},
-    {id:129, ind:'refer', sku:'AMD-4021', ean:7896852612583, name:'Kit Guanidina 1 Aplicação Ou 2 Retoques Gold Black', categoria:'Kit', unit:'un', priceSN:49.25, priceLR:41.98},
-    {id:130, ind:'refer', sku:'AMD-5393', ean:7896852612798, name:'Kit Creme Alisante Essência Flores Gold Black', categoria:'Kit', unit:'un', priceSN:31.67, priceLR:26.99},
-    {id:131, ind:'refer', sku:'AMD-5172', ean:7896852618004, name:'Leave-In Cachos + Fechados Amend Cachos 250G', categoria:'Leave-in', unit:'un', priceSN:34.67, priceLR:29.55},
-    {id:132, ind:'refer', sku:'AMD-5171', ean:7896852617991, name:'Leave-In Ondulador E Cachos Abertos Amend Cachos 250G', categoria:'Leave-in', unit:'un', priceSN:34.67, priceLR:29.55},
-    {id:133, ind:'refer', sku:'AMD-5250', ean:7896852629086, name:'Leave-In Finalizador Amend Essencial Seca Sem Frizz 180ML', categoria:'Leave-in', unit:'un', priceSN:36.40, priceLR:31.02},
-    {id:134, ind:'refer', sku:'AMD-5380', ean:7896852631454, name:'Leave-in Expertise 40+ 180G', categoria:'Leave-in', unit:'un', priceSN:41.31, priceLR:35.20},
-    {id:135, ind:'refer', sku:'AMD-5396', ean:7896852628638, name:'Máscara Gold Black Hidratação Nutritiva 250G', categoria:'Máscara', unit:'un', priceSN:19.67, priceLR:16.76},
-    {id:136, ind:'refer', sku:'AMD-5368', ean:7896852616208, name:'Máscara Nutritiva Marula Fabulous Expertise 300G', categoria:'Máscara', unit:'un', priceSN:40.12, priceLR:34.19},
-    {id:137, ind:'refer', sku:'AMD-5390', ean:7896852628690, name:'Máscara Doadora De Volume Expertise Volume Absoluto 300G', categoria:'Máscara', unit:'un', priceSN:41.97, priceLR:35.77},
-    {id:138, ind:'refer', sku:'AMD-5359', ean:7896852627914, name:'Máscara Hidratante E Fortalecedora Amend Expertise Hidratação & Força 300G', categoria:'Máscara', unit:'un', priceSN:41.33, priceLR:35.23},
-    {id:139, ind:'refer', sku:'AMD-5421', ean:7896852611524, name:'Mousse Modeladora Valorize 140G', categoria:'Mousse', unit:'un', priceSN:33.63, priceLR:28.66},
-    {id:140, ind:'refer', sku:'AMD-5391', ean:7896852628706, name:'Mousse Doadora De Volume Expertise Volume Absoluto 140G', categoria:'Mousse', unit:'un', priceSN:35.60, priceLR:30.34},
-    {id:141, ind:'refer', sku:'AMD-5289', ean:7896852625347, name:'Óleo De Monoi Propriedades Protetoras Amend Millenar Oil 60Ml', categoria:'Óleos', unit:'un', priceSN:41.37, priceLR:35.26},
-    {id:142, ind:'refer', sku:'AMD-5290', ean:7896852625378, name:'Óleo De Inchi Propriedades Restauradoras Amend Millenar Oil 60Ml', categoria:'Óleos', unit:'un', priceSN:41.37, priceLR:35.26},
-    {id:143, ind:'refer', sku:'AMD-5291', ean:7896852625385, name:'Óleo De Moringa Propriedades Revitalizantes Amend Millenar Oil 60Ml', categoria:'Óleos', unit:'un', priceSN:41.37, priceLR:35.26},
-    {id:144, ind:'refer', sku:'AMD-5370', ean:7896852625330, name:'Óleo Nutritivo Amend Expertise Marula Fabulous Nutrition 60Ml', categoria:'Óleos', unit:'un', priceSN:43.05, priceLR:36.69},
-    {id:145, ind:'refer', sku:'AMD-5409', ean:7896852625033, name:'Pó Descolorante Amend Luxe Creations Blonde Care (Pouch) 300G', categoria:'Pó Descolorante', unit:'un', priceSN:56.68, priceLR:48.31},
-    {id:146, ind:'refer', sku:'AMD-5156', ean:7896852627440, name:'Pó Descolorante Com Combinação De 12 Óleos Amend 300G', categoria:'Pó Descolorante', unit:'un', priceSN:39.99, priceLR:34.08},
-    {id:147, ind:'refer', sku:'AMD-5162', ean:7896852628010, name:'Pó Descolorante Rápido Aloe Vera e Silicone 300G', categoria:'Pó Descolorante', unit:'un', priceSN:39.99, priceLR:34.08},
-    {id:148, ind:'refer', sku:'AMD-5160', ean:7896852627983, name:'Pó Descolorante Óleos De Camomila E Aloe Vera E Silicone 300G', categoria:'Pó Descolorante', unit:'un', priceSN:42.59, priceLR:36.30},
-    {id:149, ind:'refer', sku:'AMD-5246', ean:7896852629024, name:'Serum Pro-Volume Amend Essencial Antiqueda', categoria:'Sérum', unit:'un', priceSN:42.05, priceLR:35.84},
-    {id:150, ind:'refer', sku:'AMD-5165', ean:7896852621486, name:'Shampoo Amend Botanic Beauty Óleo De Monoi E Extratos De Alecrim E Gengibre 250Ml', categoria:'Shampoo', unit:'un', priceSN:38.64, priceLR:32.93},
-    {id:151, ind:'refer', sku:'AMD-5168', ean:7896852617960, name:'Shampoo Amend Cachos 250Ml', categoria:'Shampoo', unit:'un', priceSN:44.87, priceLR:38.24},
-    {id:152, ind:'refer', sku:'AMD-5243', ean:7896852628997, name:'Shampoo Fortificante Amend Essencial Antiqueda', categoria:'Shampoo', unit:'un', priceSN:47.52, priceLR:40.50},
-    {id:153, ind:'refer', sku:'AMD-5285', ean:7896852630563, name:'Shampoo Nutritivo Amend Millenar Óleos Árabes', categoria:'Shampoo', unit:'un', priceSN:50.57, priceLR:43.10},
+    {id:100, ind:'refer', sku:'AMD-5239', ean:7896852627310, codFab:1361, linha:"Oxidantes 75", name:'Agua Oxigenada 10 Volumes Amend Color Intensy 75Ml', categoria:'Água Oxigenada', unit:'un', priceSN:7.48, priceLR:6.38},
+    {id:101, ind:'refer', sku:'AMD-5235', ean:7896852627273, codFab:1357, linha:"Oxidantes 950", name:'Agua Oxigenada 10 Volumes Amend Color Intensy 950Ml', categoria:'Água Oxigenada', unit:'un', priceSN:32.91, priceLR:28.05},
+    {id:102, ind:'refer', sku:'AMD-5179', ean:7896852627372, codFab:1406, linha:"Oxidantes 75", name:'Agua Oxigenada 20 Volumes Color Delicate 75Ml', categoria:'Água Oxigenada', unit:'un', priceSN:7.87, priceLR:6.70},
+    {id:103, ind:'refer', sku:'AMD-5177', ean:7896852627358, codFab:1404, linha:"Oxidantes 950", name:'Agua Oxigenada 20 Volumes Color Delicate 950Ml', categoria:'Água Oxigenada', unit:'un', priceSN:32.91, priceLR:28.05},
+    {id:104, ind:'refer', sku:'AMD-5249', ean:7896852629031, codFab:'1379-1', linha:"Amend", name:'Ampolas Superdoses De Reparação Amend Essencial Cronograma Capilar', categoria:'Ampola', unit:'un', priceSN:33.59, priceLR:28.62},
+    {id:105, ind:'refer', sku:'AMD-5342', ean:7896852625255, codFab:1330, linha:"Amend Millenar", name:'Balm Amend Millenar Óleos Gregos', categoria:'Balm', unit:'un', priceSN:42.28, priceLR:36.03},
+    {id:106, ind:'refer', sku:'AMD-5288', ean:7896852630617, codFab:'1618-1', linha:"Amend Millenar", name:'Balm Selante Nutritivo Amend Millenar Óleos Árabes 180ML', categoria:'Balm', unit:'un', priceSN:36.89, priceLR:31.44},
+    {id:107, ind:'refer', sku:'AMD-5416', ean:7896852628843, codFab:'1386-1', linha:"Amend Millenar", name:'Balm Selante Millenar Óleos Japoneses 180ML', categoria:'Balm', unit:'un', priceSN:36.89, priceLR:31.44},
+    {id:108, ind:'refer', sku:'AMD-5332', ean:7896852618998, codFab:'1244-1', linha:"Amend Millenar", name:'Balm Oleos Indianos Millenar 180G', categoria:'Balm', unit:'un', priceSN:36.89, priceLR:31.44},
+    {id:109, ind:'refer', sku:'AMD-5229', ean:7896852613931, codFab:'975-1', linha:"Color Intensy", name:'Coloracao 0.2 Violeta Intencificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
+    {id:110, ind:'refer', sku:'AMD-5232', ean:7896852618080, codFab:'987-1', linha:"Color Intensy", name:'Coloracao 0.43 Cobre Intencificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
+    {id:111, ind:'refer', sku:'AMD-5227', ean:7896852613047, codFab:'973-1', linha:"Color Intensy", name:'Coloracao 0.6 Vermelho Intensificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
+    {id:112, ind:'refer', sku:'AMD-5228', ean:7896852613894, codFab:'974-1', linha:"Color Intensy", name:'Coloracao 01 Cinza Intensificador Amend Color Intensy 50G', categoria:'Coloração', unit:'un', priceSN:22.64, priceLR:19.30},
+    {id:113, ind:'refer', sku:'AMD-5372', ean:7896852628324, codFab:'1378-1', linha:"Expertise", name:'Condicionador Equilibrante Expertise Oleosidade Equilibrada 250ML', categoria:'Condicionadores', unit:'un', priceSN:38.59, priceLR:32.89},
+    {id:114, ind:'refer', sku:'AMD-5389', ean:7896852628683, codFab:'1397-1', linha:"Expertise", name:'Condicionador Doador De Volume Expertise Volume Absoluto 250ML', categoria:'Condicionadores', unit:'un', priceSN:38.59, priceLR:32.89},
+    {id:115, ind:'refer', sku:'AMD-5358', ean:7896852627907, codFab:'1368-1', linha:"Expertise", name:'Condicionador Hidratante E Fortalecedor Amend Expertise Hidratação & Força 250ML', categoria:'Condicionadores', unit:'un', priceSN:35.88, priceLR:30.58},
+    {id:116, ind:'refer', sku:'AMD-5374', ean:7896852616079, codFab:'1116-1', linha:"Expertise", name:'Condicionador Intensificador Pos Progressiva Expertise 250Ml', categoria:'Condicionadores', unit:'un', priceSN:35.88, priceLR:30.58},
+    {id:117, ind:'refer', sku:'AMD-4020', ean:7896852612804, codFab:'413-1', linha:"Gold Black", name:'Creme Relaxante Cabelos Cacheados Ou Crespos Gold Black 500G', categoria:'Cremes', unit:'un', priceSN:69.83, priceLR:59.51},
+    {id:118, ind:'refer', sku:'AMD-5397', ean:7896852628645, codFab:'1607-1', linha:"Gold Black", name:'Creme Para Pentear Gold Black Hidratação Nutritiva 250ML', categoria:'Cremes', unit:'un', priceSN:17.87, priceLR:15.23},
+    {id:119, ind:'refer', sku:'AMD-5376', ean:7896852616437, codFab:'1118-1', linha:"Expertise", name:'Creme De Pentear Defrizante Pos Progressiva Expertise 180G', categoria:'Cremes', unit:'un', priceSN:35.57, priceLR:30.32},
+    {id:120, ind:'refer', sku:'AMD-5369', ean:7896852616215, codFab:'1123-1', linha:"Expertise", name:'Creme Disciplinante Nutritivo Marula Fabulous Expertise 180G', categoria:'Cremes', unit:'un', priceSN:35.57, priceLR:30.32},
+    {id:121, ind:'refer', sku:'AMD-5164', ean:7896852627433, codFab:'1366-1', linha:"Amend", name:'Fluido Antiumidade Amend Blindagem Essencial 180Ml', categoria:'Fluídos', unit:'un', priceSN:71.53, priceLR:60.97},
+    {id:122, ind:'refer', sku:'AMD-5292', ean:7896852628102, codFab:'1365-1', linha:"Amend", name:'Fluído Restaurador Amend Essencial Multibenefícios 180ML', categoria:'Fluídos', unit:'un', priceSN:71.53, priceLR:60.97},
+    {id:123, ind:'refer', sku:'AMD-5175', ean:7896852630556, codFab:'1391-1', linha:"Cachos", name:'Fluído Revitalizante Day After Amend Cachos 180ML', categoria:'Fluídos', unit:'un', priceSN:29.85, priceLR:25.45},
+    {id:124, ind:'refer', sku:'AMD-5408', ean:7896852622322, codFab:'1311-1', linha:"Luxe Creations", name:'Fluido Reconstrutor Luxe Creations Blonde Care 180Ml', categoria:'Fluídos', unit:'un', priceSN:39.29, priceLR:33.49},
+    {id:125, ind:'refer', sku:'AMD-5338', ean:7896852619407, codFab:1270, linha:"Amend Millenar", name:'Hair Butter Mascara Amend Millenar Oleos De Madagascar 300G', categoria:'Hair Butter e Spray', unit:'un', priceSN:48.97, priceLR:41.74},
+    {id:126, ind:'refer', sku:'AMD-5335', ean:7896852619025, codFab:'1247-1', linha:"Amend Millenar", name:'Hair Butter Mascara Oleos Marroquinos 300G', categoria:'Hair Butter e Spray', unit:'un', priceSN:48.73, priceLR:41.53},
+    {id:127, ind:'refer', sku:'AMD-5419', ean:7896852611548, codFab:350, linha:"Valorize", name:'Hair Spray Forte Valorize 400Ml', categoria:'Hair Butter e Spray', unit:'un', priceSN:38.24, priceLR:32.59},
+    {id:128, ind:'refer', sku:'AMD-5420', ean:7896852611555, codFab:351, linha:"Valorize", name:'Hair Spray Ultraforte Valorize 400Ml', categoria:'Hair Butter e Spray', unit:'un', priceSN:37.83, priceLR:32.24},
+    {id:129, ind:'refer', sku:'AMD-4021', ean:7896852612583, codFab:'426-1', linha:"Gold Black", name:'Kit Guanidina 1 Aplicação Ou 2 Retoques Gold Black', categoria:'Kit', unit:'un', priceSN:49.25, priceLR:41.98},
+    {id:130, ind:'refer', sku:'AMD-5393', ean:7896852612798, codFab:'433-1', linha:"Gold Black", name:'Kit Creme Alisante Essência Flores Gold Black', categoria:'Kit', unit:'un', priceSN:31.67, priceLR:26.99},
+    {id:131, ind:'refer', sku:'AMD-5172', ean:7896852618004, codFab:'1200-1', linha:"Cachos", name:'Leave-In Cachos + Fechados Amend Cachos 250G', categoria:'Leave-in', unit:'un', priceSN:34.67, priceLR:29.55},
+    {id:132, ind:'refer', sku:'AMD-5171', ean:7896852617991, codFab:'1199-1', linha:"Cachos", name:'Leave-In Ondulador E Cachos Abertos Amend Cachos 250G', categoria:'Leave-in', unit:'un', priceSN:34.67, priceLR:29.55},
+    {id:133, ind:'refer', sku:'AMD-5250', ean:7896852629086, codFab:'1387-1', linha:"Amend", name:'Leave-In Finalizador Amend Essencial Seca Sem Frizz 180ML', categoria:'Leave-in', unit:'un', priceSN:36.40, priceLR:31.02},
+    {id:134, ind:'refer', sku:'AMD-5380', ean:7896852631454, codFab:'1634-1', linha:"Expertise", name:'Leave-in Expertise 40+ 180G', categoria:'Leave-in', unit:'un', priceSN:41.31, priceLR:35.20},
+    {id:135, ind:'refer', sku:'AMD-5396', ean:7896852628638, codFab:'1606-1', linha:"Gold Black", name:'Máscara Gold Black Hidratação Nutritiva 250G', categoria:'Máscara', unit:'un', priceSN:19.67, priceLR:16.76},
+    {id:136, ind:'refer', sku:'AMD-5368', ean:7896852616208, codFab:'1122-1', linha:"Expertise", name:'Máscara Nutritiva Marula Fabulous Expertise 300G', categoria:'Máscara', unit:'un', priceSN:40.12, priceLR:34.19},
+    {id:137, ind:'refer', sku:'AMD-5390', ean:7896852628690, codFab:'1398-1', linha:"Expertise", name:'Máscara Doadora De Volume Expertise Volume Absoluto 300G', categoria:'Máscara', unit:'un', priceSN:41.97, priceLR:35.77},
+    {id:138, ind:'refer', sku:'AMD-5359', ean:7896852627914, codFab:'1369-1', linha:"Expertise", name:'Máscara Hidratante E Fortalecedora Amend Expertise Hidratação & Força 300G', categoria:'Máscara', unit:'un', priceSN:41.33, priceLR:35.23},
+    {id:139, ind:'refer', sku:'AMD-5421', ean:7896852611524, codFab:'352-1', linha:"Valorize", name:'Mousse Modeladora Valorize 140G', categoria:'Mousse', unit:'un', priceSN:33.63, priceLR:28.66},
+    {id:140, ind:'refer', sku:'AMD-5391', ean:7896852628706, codFab:'1399-1', linha:"Expertise", name:'Mousse Doadora De Volume Expertise Volume Absoluto 140G', categoria:'Mousse', unit:'un', priceSN:35.60, priceLR:30.34},
+    {id:141, ind:'refer', sku:'AMD-5289', ean:7896852625347, codFab:'1337-1', linha:"Amend Millenar", name:'Óleo De Monoi Propriedades Protetoras Amend Millenar Oil 60Ml', categoria:'Óleos', unit:'un', priceSN:41.37, priceLR:35.26},
+    {id:142, ind:'refer', sku:'AMD-5290', ean:7896852625378, codFab:'1338-1', linha:"Amend Millenar", name:'Óleo De Inchi Propriedades Restauradoras Amend Millenar Oil 60Ml', categoria:'Óleos', unit:'un', priceSN:41.37, priceLR:35.26},
+    {id:143, ind:'refer', sku:'AMD-5291', ean:7896852625385, codFab:'1339-1', linha:"Amend Millenar", name:'Óleo De Moringa Propriedades Revitalizantes Amend Millenar Oil 60Ml', categoria:'Óleos', unit:'un', priceSN:41.37, priceLR:35.26},
+    {id:144, ind:'refer', sku:'AMD-5370', ean:7896852625330, codFab:'1335-1', linha:"Expertise", name:'Óleo Nutritivo Amend Expertise Marula Fabulous Nutrition 60Ml', categoria:'Óleos', unit:'un', priceSN:43.05, priceLR:36.69},
+    {id:145, ind:'refer', sku:'AMD-5409', ean:7896852625033, codFab:1320, linha:"Luxe Creations", name:'Pó Descolorante Amend Luxe Creations Blonde Care (Pouch) 300G', categoria:'Pó Descolorante', unit:'un', priceSN:56.68, priceLR:48.31},
+    {id:146, ind:'refer', sku:'AMD-5156', ean:7896852627440, codFab:1356, linha:"Descolorante Pouch", name:'Pó Descolorante Com Combinação De 12 Óleos Amend 300G', categoria:'Pó Descolorante', unit:'un', priceSN:39.99, priceLR:34.08},
+    {id:147, ind:'refer', sku:'AMD-5162', ean:7896852628010, codFab:1376, linha:"Luxe Creations", name:'Pó Descolorante Rápido Aloe Vera e Silicone 300G', categoria:'Pó Descolorante', unit:'un', priceSN:39.99, priceLR:34.08},
+    {id:148, ind:'refer', sku:'AMD-5160', ean:7896852627983, codFab:1374, linha:"Descolorante", name:'Pó Descolorante Óleos De Camomila E Aloe Vera E Silicone 300G', categoria:'Pó Descolorante', unit:'un', priceSN:42.59, priceLR:36.30},
+    {id:149, ind:'refer', sku:'AMD-5246', ean:7896852629024, codFab:'1603-1', linha:"Amend", name:'Serum Pro-Volume Amend Essencial Antiqueda', categoria:'Sérum', unit:'un', priceSN:42.05, priceLR:35.84},
+    {id:150, ind:'refer', sku:'AMD-5165', ean:7896852621486, codFab:'1279-1', linha:"Botanic Beauty", name:'Shampoo Amend Botanic Beauty Óleo De Monoi E Extratos De Alecrim E Gengibre 250Ml', categoria:'Shampoo', unit:'un', priceSN:38.64, priceLR:32.93},
+    {id:151, ind:'refer', sku:'AMD-5168', ean:7896852617960, codFab:'1196-1', linha:"Cachos", name:'Shampoo Amend Cachos 250Ml', categoria:'Shampoo', unit:'un', priceSN:44.87, priceLR:38.24},
+    {id:152, ind:'refer', sku:'AMD-5243', ean:7896852628997, codFab:'1600-1', linha:"Amend", name:'Shampoo Fortificante Amend Essencial Antiqueda', categoria:'Shampoo', unit:'un', priceSN:47.52, priceLR:40.50},
+    {id:153, ind:'refer', sku:'AMD-5285', ean:7896852630563, codFab:'1615-1', linha:"Amend Millenar", name:'Shampoo Nutritivo Amend Millenar Óleos Árabes', categoria:'Shampoo', unit:'un', priceSN:50.57, priceLR:43.10},
 ];
 
 const PRODS = [...PRODS_GENERIC, ...PRODS_REFER];
@@ -204,6 +212,9 @@ function buildOrder(clientId, supplier, paymentMethod, items, discountPct, daysA
         date: d(daysAgo), status,
         deliveryDate: (extra&&extra.deliveryDate) || null,
         notes: (extra&&extra.notes) || null,
+        ownerId: (extra&&extra.ownerId) || null,
+        source: (extra&&extra.source) || 'rep',
+        clientSnapshot: (extra&&extra.clientSnapshot) || null,
     };
 }
 
@@ -228,7 +239,7 @@ const TEAM_MEMBER_SEED = {
     m6: { id:'m6', name:'Diego Araújo',    revenue:9100,  goalRevenue:18000, visits:31, goalVisits:50, clients:19, pendingTasks:11 },
 };
 
-const SEED_VERSION = 7;
+const SEED_VERSION = 10;
 
 function seed() {
     if (S.g('seeded') === SEED_VERSION) return;
@@ -274,10 +285,11 @@ function seed() {
             trainings:[]},
     ];
     const CLIENT_OWNER_MAP = {1:'u1', 2:'u1', 3:'u2', 4:'u2', 5:'u1', 6:'m3', 7:'m3', 8:'m4'};
-    S.setClients(clients.map(c=>({...c, orgId:'org-team', ownerId: CLIENT_OWNER_MAP[c.id]||'u1'})));
+    clients.forEach(c=>{ c.orgId='org-team'; c.ownerId = CLIENT_OWNER_MAP[c.id]||'u1'; });
+    S.setClients(clients);
 
     const orders = [];
-    function addOrders(client, list) { list.forEach(o=>orders.push(buildOrder(client.id, client.supplier, o.pm, mkItems(client,o.items), o.disc, o.days, o.status))); }
+    function addOrders(client, list) { list.forEach(o=>orders.push(buildOrder(client.id, client.supplier, o.pm, mkItems(client,o.items), o.disc, o.days, o.status, {ownerId: client.ownerId, source:'rep'}))); }
 
     addOrders(clients[0], [
         {pm:'pix',      items:[[1,4,0],[2,6,0],[3,12,0.02]], disc:0.02, days:15, status:'confirmado'},
@@ -315,6 +327,18 @@ function seed() {
     addOrders(clients[1], [{pm:'boleto', items:[[3,15,0]],          disc:0, days:1, status:'confirmado'}]);
     addOrders(clients[4], [{pm:'pix',    items:[[8,30,0]],          disc:0, days:0, status:'confirmado'}]);
     addOrders(clients[5], [{pm:'boleto', items:[[12,8,0]],          disc:0, days:1, status:'confirmado'}]);
+    // ---- Pedidos "em aberto" vindos do formulário público (demonstração) ----
+    // O formulário não identifica a empresa — só o link já direciona para a conta do representante.
+    const formSnapshotSN = { nomeFantasia:'Pedido via formulário', razaoSocial:'', cnpj:'', taxRegime:'Simples Nacional', email:'', phone:'(11) 97110-1214' };
+    orders.unshift(buildOrder(null, 'refer', 'boleto',
+        mkItems(formSnapshotSN, [[100,2,0],[150,1,0]]), 0, 0, 'aberto',
+        {source:'forms', ownerId:'u1', clientSnapshot: formSnapshotSN, notes:'Pedido recebido pelo formulário público de pedidos'}));
+
+    const formSnapshotLR = { nomeFantasia:'Pedido via formulário', razaoSocial:'', cnpj:'', taxRegime:'Lucro Presumido', email:'', phone:'(11) 97110-1214' };
+    orders.unshift(buildOrder(null, 'refer', 'boleto',
+        mkItems(formSnapshotLR, [[145,3,0],[153,2,0]]), 0, 0, 'aberto',
+        {source:'forms', ownerId:'u1', clientSnapshot: formSnapshotLR, notes:'Pedido recebido pelo formulário público de pedidos'}));
+
     S.s('orders', orders.sort((a,b)=>new Date(b.date)-new Date(a.date)));
 
     // ---- Tarefas distribuídas entre membros da equipe (alimenta o calendário multiusuário) ----
@@ -388,8 +412,10 @@ function seed() {
 
     // Leads ficam vinculados à carteira da equipe de representantes (org-team).
     const leadStatusCycle = ['novo','novo','contatado','contatado','novo','qualificado','novo','novo','novo','novo','novo','novo','contatado','novo'];
+    const leadOwnerCycle = ['u1','u1','u2','u2','u1','m3','m3','m4','u1','u2','u1','m3','u2','u1'];
     S.setLeads(LEADS_REFER_SEED.map((l,i)=>({
         id: 'lead'+(i+1), orgId:'org-team', status: leadStatusCycle[i]||'novo',
+        ownerId: leadOwnerCycle[i]||'u1',
         createdAt: d(Math.floor(Math.random()*25)+1), ...l,
     })));
 

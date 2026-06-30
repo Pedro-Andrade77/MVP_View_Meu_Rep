@@ -75,8 +75,9 @@ body { font-family: 'Inter', sans-serif; background: var(--surface); margin: 0; 
 .client-card:active { transform: scale(0.985); }
 
 /* ---------- Bottom nav (mobile) — estilo pill, tipo iOS/Nubank ---------- */
-.bnav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.92); backdrop-filter: blur(14px); border-top: 1px solid var(--line); display: none; z-index: 100; padding: 8px 8px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 18px rgba(20,20,30,0.04); }
-.bnav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 6px 2px; color: var(--ink-4); font-size: 9.5px; font-weight: 700; border: none; background: none; font-family: 'Inter', sans-serif; transition: color .15s, transform .15s; }
+.bnav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.92); backdrop-filter: blur(14px); border-top: 1px solid var(--line); display: none; z-index: 100; padding: 8px 8px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 18px rgba(20,20,30,0.04); overflow-x: auto; scrollbar-width: none; justify-content: flex-start !important; }
+.bnav::-webkit-scrollbar { display: none; }
+.bnav-item { flex: 0 0 auto; min-width: 58px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 6px 4px; color: var(--ink-4); font-size: 9.5px; font-weight: 700; border: none; background: none; font-family: 'Inter', sans-serif; transition: color .15s, transform .15s; white-space: nowrap; }
 .bnav-item i { font-size: 16px; width: 30px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 11px; transition: background .2s, color .2s; }
 .bnav-item.active { color: var(--green-600); }
 .bnav-item.active i { background: var(--green-100); color: var(--green-600); }
@@ -124,6 +125,18 @@ body { font-family: 'Inter', sans-serif; background: var(--surface); margin: 0; 
 
 .slabel { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 10px; }
 
+.faq-item { background: white; border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; }
+.faq-item summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: 700; color: #111827; cursor: pointer; list-style: none; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary i { color: #86868B; font-size: 12px; transition: transform .2s; flex-shrink: 0; }
+.faq-item[open] summary i { transform: rotate(180deg); color: var(--green-500); }
+.faq-item p { font-size: 13px; color: var(--ink-3); line-height: 1.65; margin: 12px 0 0; }
+
+@media (min-width: 1024px) {
+    .lp-bento-feature { grid-row: span 2; }
+    .lp-bento-tall { grid-column: 2 / 3; }
+}
+
 .chip { padding: 8px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; border: none; background: white; color: var(--ink-3); transition: all .15s; font-family: 'Inter', sans-serif; box-shadow: var(--e1); }
 .chip.active { background: var(--ink); color: white; box-shadow: var(--e2); }
 
@@ -154,8 +167,9 @@ body { font-family: 'Inter', sans-serif; background: var(--surface); margin: 0; 
 .ri:hover { box-shadow: var(--e2); transform: translateY(-1px); }
 
 /* Stat card — "widget" estilo Nubank/Apple: ícone num badge circular, número grande */
-.sc { background: white; border-radius: var(--r-lg); padding: 16px; flex: 1; min-width: 0; box-shadow: var(--e3); display: flex; flex-direction: column; gap: 8px; }
-.sc-icon { width: 32px; height: 32px; border-radius: 10px; background: var(--green-50); display: flex; align-items: center; justify-content: center; color: var(--green-600); font-size: 14px; }
+.sc { background: white; border-radius: var(--r-lg); padding: 16px; flex: 1; min-width: 0; box-shadow: var(--e2); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; transition: transform .15s cubic-bezier(.16,1,.3,1), box-shadow .15s ease; }
+.sc:hover { transform: translateY(-2px); box-shadow: var(--e3); }
+.sc-icon { width: 32px; height: 32px; border-radius: 10px; background: var(--green-50); display: flex; align-items: center; justify-content: center; color: var(--green-600); font-size: 14px; flex-shrink: 0; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(10,10,15,0.5); backdrop-filter: blur(2px); display: none; align-items: flex-end; justify-content: center; z-index: 400; }
 .modal-overlay.show { display: flex; animation: fadeIn .15s ease; }

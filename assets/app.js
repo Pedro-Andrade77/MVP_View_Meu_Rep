@@ -3,20 +3,20 @@
 // ======================
 const NAV_IDS = {
     dashboard: ['bn-dash','sb-dash'],
+    pedidos:   ['bn-pedidos','sb-pedidos'],
     carteira:  ['bn-cw','sb-cw'],
     leads:     ['bn-leads','sb-leads'],
     tarefas:   ['bn-tf','sb-tf'],
     rota:      ['bn-rt','sb-rt'],
-    pedido:    ['bn-pd','sb-pd'],
-    config:    ['sb-cfg'],
-    financeiro:['sb-fin'],
-    equipe:    ['sb-equipe'],
-    anotacoes: ['sb-notes'],
+    config:    ['bn-cfg','sb-cfg','bn-sup-cfg'],
+    financeiro:['bn-fin','sb-fin'],
+    equipe:    ['bn-equipe','sb-equipe'],
+    anotacoes: ['bn-notes','sb-notes'],
     'sup-dash':    ['bn-sup-dash','sb-sup-dash'],
     'sup-catalogo':['bn-sup-cat','sb-sup-cat'],
 };
-const NO_BNAV_SCREENS = ['ok','config','detail','financeiro','equipe','anotacoes'];
-const AUTH_SCREENS = ['dashboard','carteira','detail','rota','pedido','ok','tarefas','config','financeiro','equipe','anotacoes','leads','sup-dash','sup-catalogo'];
+const NO_BNAV_SCREENS = ['ok','detail','pedido'];
+const AUTH_SCREENS = ['dashboard','pedidos','carteira','detail','rota','pedido','ok','tarefas','config','financeiro','equipe','anotacoes','leads','sup-dash','sup-catalogo'];
 
 function applyAccountNav() {
     const u = S.session();
@@ -56,10 +56,11 @@ function showScreen(name) {
     window.scrollTo(0,0);
 
     const loaders = {
-        dashboard: loadDash, carteira: loadCW, rota: loadRota, pedido: loadPedido,
+        dashboard: loadDash, pedidos: loadPedidos, carteira: loadCW, rota: loadRota, pedido: loadPedido,
         tarefas: loadTarefas, config: loadConfig, financeiro: loadFinanceiro, equipe: loadEquipe, anotacoes: loadNotes,
         register: resetRegisterWizard, leads: loadLeads,
         'sup-dash': loadSupDash, 'sup-catalogo': loadSupCatalogo,
+        forms: formsEnterScreen,
     };
     loaders[name]?.();
 }
@@ -210,8 +211,24 @@ function lastOrderDate(c) { const os=clientOrders(c.id); return os[0]?os[0].date
 function lastOrderVal(c) { const os=clientOrders(c.id); return os[0]?os[0].total:0; }
 function avgTicket(c) { const os=clientOrders(c.id); return os.length? os.reduce((s,o)=>s+o.total,0)/os.length : 0; }
 
+function topProductForClient(clientId) {
+    const os = clientOrders(clientId);
+    if (!os.length) return null;
+    const byProduct = {};
+    os.forEach(o=>o.items.forEach(it=>{
+        const k = it.productId;
+        byProduct[k] = byProduct[k] || { productId:k, name:it.name, qty:0, orders:0 };
+        byProduct[k].qty += it.qty;
+        byProduct[k].orders += 1;
+    }));
+    return Object.values(byProduct).sort((a,b)=>b.qty-a.qty)[0] || null;
+}
+
 function revenueForMonth(monthKey) {
     return S.orders().filter(o=>o.date.slice(0,7)===monthKey).reduce((s,o)=>s+o.total,0);
+}
+function revenueForMonthOwner(monthKey, ownerId) {
+    return S.orders().filter(o=>!o.deletedAt && o.date.slice(0,7)===monthKey && o.ownerId===ownerId).reduce((s,o)=>s+o.total,0);
 }
 function commissionForMonth(monthKey) {
     return revenueForMonth(monthKey) * S.settings().commissionRate;
@@ -289,7 +306,7 @@ function loadDash() {
             <i class="fas fa-chevron-right" style="color:#C7C7CC;font-size:11px;"></i>
         </div>`).join('');
 
-    const newLeads = S.leads().filter(l=>l.status==='novo').slice(0,3);
+    const newLeads = visibleLeads().filter(l=>l.status==='novo').slice(0,3);
     const dl = document.getElementById('dash-leads');
     if (dl) {
         dl.innerHTML = newLeads.length===0
@@ -304,6 +321,55 @@ function loadDash() {
                 </div>
             </div>`).join('');
     }
+
+    renderDashGoals();
+}
+
+function dashGoalCardHtml(title, icon, pct, line1, line2) {
+    const color = pct>=100?'#16A34A':pct>=60?'#0EA5E9':'#D97706';
+    return `<div style="background:white;border:1px solid #E5E5EA;border-radius:14px;padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:30px;height:30px;border-radius:9px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ${icon}" style="color:#16A34A;font-size:13px;"></i></div>
+            <span style="font-size:13px;font-weight:700;color:#1D1D1F;flex:1;">${title}</span>
+            <span style="font-size:15px;font-weight:800;color:${color};">${pct}%</span>
+        </div>
+        <div style="background:#F2F2F7;border-radius:5px;height:6px;overflow:hidden;margin-bottom:8px;">
+            <div style="height:100%;background:${color};border-radius:5px;width:${pct}%;transition:width 1s ease;"></div>
+        </div>
+        <div style="font-size:11px;color:#6E6E73;">${line1}</div>
+        <div style="font-size:11px;color:#86868B;margin-top:2px;">${line2}</div>
+    </div>`;
+}
+
+function renderDashGoals() {
+    const box = document.getElementById('dash-goals');
+    if (!box) return;
+    const mid = currentMemberId();
+    const goals = S.goals();
+    const monthKey = new Date().toISOString().slice(0,7);
+
+    const personalRevenue = mid ? revenueForMonthOwner(monthKey, mid) : revenueForMonth(monthKey);
+    const personalVisits = S.visits().filter(v=>(mid?v.ownerId===mid:true) && v.date.slice(0,7)===monthKey).length;
+    const pPct = Math.min(100, Math.round((personalRevenue/goals.revenueTarget)*100) || 0);
+    const pVpct = Math.min(100, Math.round((personalVisits/goals.visitsTarget)*100) || 0);
+    let html = dashGoalCardHtml('Meta pessoal', 'fa-bullseye',
+        pPct, fmtMoney(personalRevenue)+' de '+fmtMoney(goals.revenueTarget)+' em vendas',
+        pVpct+'% das visitas ('+personalVisits+'/'+goals.visitsTarget+')');
+
+    const teams = myTeams();
+    if (teams.length) {
+        const memberIds = [...new Set(teams.flatMap(t=>t.memberIds))];
+        const members = memberIds.map(memberStats);
+        const teamRevenue = members.reduce((s,m)=>s+m.revenue,0);
+        const teamGoal = members.reduce((s,m)=>s+m.goalRevenue,0) || 1;
+        const teamVisits = members.reduce((s,m)=>s+m.visits,0);
+        const teamVisitsGoal = members.reduce((s,m)=>s+m.goalVisits,0) || 1;
+        const tPct = Math.min(100, Math.round((teamRevenue/teamGoal)*100) || 0);
+        html += dashGoalCardHtml('Meta do time', 'fa-people-group',
+            tPct, fmtMoney(teamRevenue)+' de '+fmtMoney(teamGoal)+' em vendas',
+            memberIds.length+' membros · '+teamVisits+'/'+teamVisitsGoal+' visitas');
+    }
+    box.innerHTML = html;
 }
 
 // ======================
@@ -313,6 +379,32 @@ function loadCW() {
     const clients = visibleClients();
     document.getElementById('cw-subtitle').textContent = clients.length + ' clientes na carteira';
     renderClients();
+}
+
+function renderCwStats(clients) {
+    let totalOrders = 0, totalValue = 0;
+    const byProduct = {};
+    clients.forEach(c=>{
+        const os = clientOrders(c.id);
+        totalOrders += os.length;
+        os.forEach(o=>{
+            totalValue += o.total;
+            o.items.forEach(it=>{
+                byProduct[it.productId] = byProduct[it.productId] || { name:it.name, qty:0 };
+                byProduct[it.productId].qty += it.qty;
+            });
+        });
+    });
+    const avgValue = totalOrders ? totalValue/totalOrders : 0;
+    const top = Object.values(byProduct).sort((a,b)=>b.qty-a.qty)[0];
+    const chipLabel = { all:'Todos os clientes', A:'Curva A', B:'Curva B', C:'Curva C', overdue:'Inadimplentes' }[cwFilter] || 'Todos os clientes';
+    const labelEl = document.getElementById('cw-stats-label');
+    if (labelEl) labelEl.textContent = 'Estatísticas — '+chipLabel+' ('+clients.length+')';
+    document.getElementById('cw-stats').innerHTML = `
+        <div class="sc"><div class="sc-icon"><i class="fas fa-receipt"></i></div><div style="font-size:20px;font-weight:800;color:#1D1D1F;">${totalOrders}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Pedidos feitos</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-sack-dollar"></i></div><div style="font-size:20px;font-weight:800;color:#1D1D1F;">${fmtMoney(avgValue)}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Valor médio do pedido</div></div>
+        <div class="sc" style="grid-column:span 2;"><div class="sc-icon"><i class="fas fa-star"></i></div><div style="font-size:14px;font-weight:800;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${top?top.name:'—'}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Produto mais pedido${top?' · '+top.qty+' un.':''}</div></div>
+    `;
 }
 
 function renderClients() {
@@ -326,6 +418,8 @@ function renderClients() {
         return mf&&ms;
     });
 
+    renderCwStats(f);
+
     if (!f.length) {
         list.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:50px 0;color:#86868B;"><i class="fas fa-users-slash" style="font-size:32px;margin-bottom:12px;display:block;"></i><div style="font-size:15px;font-weight:600;">Nenhum cliente encontrado</div></div>`;
         return;
@@ -338,6 +432,7 @@ function renderClients() {
         const dd = ld ? Math.floor((Date.now()-new Date(ld))/864e5) : 999;
         const dc = dd>30?'#DC2626':dd>14?'#D97706':'#059669';
         const tk = avgTicket(c);
+        const orderCount = clientOrders(c.id).length;
         return `<div class="client-card" onclick="openClient(${c.id})">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
                 <div style="flex:1;min-width:0;">
@@ -348,8 +443,9 @@ function renderClients() {
                         ${showOwner?`<span class="badge" style="background:#F5F5F7;color:#3A3A3C;"><span class="member-dot" style="background:${memberColor(c.ownerId)};width:7px;height:7px;margin-right:4px;"></span>${memberDisplayName(c.ownerId)}</span>`:''}
                     </div>
                     <div style="font-size:12px;color:#86868B;margin-bottom:8px;">${c.seg} · ${c.cnpj}</div>
-                    <div style="display:flex;gap:20px;">
+                    <div style="display:flex;gap:18px;">
                         <div><div style="font-size:10px;color:#86868B;font-weight:600;">ÚLTIMO PEDIDO</div><div style="font-size:13px;font-weight:700;color:${dc};">${dd>=999?'Nunca':dd+' dias atrás'}</div></div>
+                        <div><div style="font-size:10px;color:#86868B;font-weight:600;">PEDIDOS</div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">${orderCount}</div></div>
                         ${c.owe>0
                             ?`<div><div style="font-size:10px;color:#86868B;font-weight:600;">EM ABERTO</div><div style="font-size:13px;font-weight:700;color:#DC2626;">${fmtMoney(c.owe)}</div></div>`
                             :`<div><div style="font-size:10px;color:#86868B;font-weight:600;">TICKET MÉDIO</div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">${tk?fmtMoney(tk):'—'}</div></div>`
@@ -429,6 +525,7 @@ function submitAddClient() {
     closeAddClient();
     toast('Cliente adicionado à carteira!');
     loadCW();
+    if (shareFlowPending) { shareFlowPending = false; openShareFormLink(c.id); }
 }
 
 // ======================
@@ -463,6 +560,24 @@ function openClient(id) {
 
     document.getElementById('d-days').textContent = dd>=999?'—':dd;
     document.getElementById('d-lval').textContent = ld?fmtMoney(lastOrderVal(c)):'—';
+
+    const cOrders = clientOrders(c.id);
+    document.getElementById('d-ordercount').textContent = cOrders.length;
+    document.getElementById('d-avgval').textContent = cOrders.length ? fmtMoney(avgTicket(c)) : '—';
+    const top = topProductForClient(c.id);
+    document.getElementById('d-topproduct').textContent = top ? top.name+' ('+top.qty+' un. em '+top.orders+' pedido'+(top.orders!==1?'s':'')+')' : 'Sem histórico de pedidos';
+
+    const isAdmin = myTeams().some(t=>t.adminId===currentMemberId());
+    const toprepBox = document.getElementById('d-toprep-box');
+    if (isAdmin && cOrders.length) {
+        const byRep = {};
+        cOrders.forEach(o=>{ const oid=o.ownerId||currentMemberId(); byRep[oid]=(byRep[oid]||0)+o.total; });
+        const [topRepId, topRepRevenue] = Object.entries(byRep).sort((a,b)=>b[1]-a[1])[0];
+        toprepBox.style.display = 'block';
+        document.getElementById('d-toprep').innerHTML = `<span class="member-dot" style="background:${memberColor(topRepId)};"></span>${memberDisplayName(topRepId)} <span style="color:#86868B;font-weight:600;">(${fmtMoney(topRepRevenue)})</span>`;
+    } else {
+        toprepBox.style.display = 'none';
+    }
 
     let sug;
     if (c.owe>0) sug='Cliente com saldo em aberto. Regularize antes de oferecer novo pedido.';
@@ -622,6 +737,26 @@ function renderRotaMap() {
         return { x: hashPct(seed+'|x', 14, 88), y: hashPct(seed+'|y', 10, 78), c, i };
     });
 
+    // Pinos muito próximos (coincidência do hash) ficam ilegíveis — afasta-os um pouco.
+    const MIN_DIST = 16;
+    for (let pass=0; pass<6; pass++) {
+        for (let a=0; a<pts.length; a++) {
+            for (let b=a+1; b<pts.length; b++) {
+                let dx = pts[b].x-pts[a].x, dy = pts[b].y-pts[a].y;
+                let dist = Math.hypot(dx,dy);
+                if (dist < MIN_DIST) {
+                    if (dist === 0) { dx = 1; dy = 1; dist = Math.SQRT2; }
+                    const push = (MIN_DIST-dist)/2;
+                    const ux = dx/dist, uy = dy/dist;
+                    pts[a].x = Math.max(8, Math.min(94, pts[a].x - ux*push));
+                    pts[a].y = Math.max(8, Math.min(82, pts[a].y - uy*push));
+                    pts[b].x = Math.max(8, Math.min(94, pts[b].x + ux*push));
+                    pts[b].y = Math.max(8, Math.min(82, pts[b].y + uy*push));
+                }
+            }
+        }
+    }
+
     const chain = [origin, ...pts];
     linesBox.innerHTML = chain.slice(0,-1).map((p,i)=>{
         const n = chain[i+1];
@@ -710,6 +845,7 @@ let pedSupplierLocked = true;
 
 function loadPedido() {
     cart={};
+    cartDiscounts={};
     pedStep=1;
     pedSupplierLocked=true;
     const sel=document.getElementById('ped-client');
@@ -737,6 +873,7 @@ function onPedClientChange() {
     sel.innerHTML = Object.entries(IND).map(([k,v])=>`<option value="${k}" ${k===c.supplier?'selected':''}>${v}</option>`).join('');
     sel.disabled = true;
     cart={};
+    cartDiscounts={};
     prodFilter='';
     prodCatFilter='';
     document.getElementById('prod-search').value='';
@@ -758,7 +895,8 @@ function repeatLastOrder() {
     const last = clientOrders(c.id)[0];
     if (!last) return;
     cart = {};
-    last.items.forEach(it=>{ cart[it.productId] = it.qty; });
+    cartDiscounts = {};
+    last.items.forEach(it=>{ cart[it.productId] = it.qty; if (it.discountPct) cartDiscounts[it.productId] = Math.round(it.discountPct*1000)/10; });
     renderProds();
     updateCart();
     toast('Itens do último pedido carregados — revise as quantidades');
@@ -772,6 +910,7 @@ function toggleIndEdit() {
 
 function onPedIndChange() {
     cart={};
+    cartDiscounts={};
     renderProds();
     updateCart();
 }
@@ -826,13 +965,20 @@ function setProdCat(cat) {
 }
 
 function addCart(id){cart[id]=(cart[id]||0)+1;renderProds();updateCart();}
-function rmCart(id){if(cart[id]>0)cart[id]--;if(cart[id]===0)delete cart[id];renderProds();updateCart();}
+function rmCart(id){if(cart[id]>0)cart[id]--;if(cart[id]===0){delete cart[id];delete cartDiscounts[id];}renderProds();updateCart();}
+
+function setItemDiscount(id, val) {
+    const pct = Math.min(100, Math.max(0, parseFloat(val)||0));
+    if (pct>0) cartDiscounts[id]=pct; else delete cartDiscounts[id];
+    updateCart();
+}
 
 function cartSubtotal() {
     const c = pedClient();
     return Object.entries(cart).reduce((s,[id,qty])=>{
         const p=prod(parseInt(id));
-        return s + effPrice(p,c.taxRegime)*qty;
+        const discPct = (cartDiscounts[id]||0)/100;
+        return s + effPrice(p,c.taxRegime)*qty*(1-discPct);
     },0);
 }
 
@@ -847,8 +993,16 @@ function updateCart() {
     const cartItemsHtml = items.map(([id,qty])=>{
         const p=prod(parseInt(id));
         const price = effPrice(p,c.taxRegime);
-        const t=price*qty; sub+=t;
-        return `<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:#3A3A3C;">${p.name} × ${qty}</span><span style="font-size:13px;font-weight:600;color:#1D1D1F;">${fmtMoney(t)}</span></div>`;
+        const itemDisc = cartDiscounts[id]||0;
+        const t=price*qty*(1-itemDisc/100); sub+=t;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:13px;color:#3A3A3C;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name} × ${qty}</span>
+            <span style="display:flex;align-items:center;gap:3px;flex-shrink:0;">
+                <input type="number" min="0" max="100" step="1" value="${itemDisc||''}" placeholder="0" title="Desconto do item (%)" onchange="setItemDiscount(${id},this.value)" style="width:42px;padding:3px 4px;border:1.5px solid #E5E5EA;border-radius:6px;font-size:11px;text-align:center;font-family:'Inter',sans-serif;">
+                <span style="font-size:10px;color:#86868B;">%</span>
+            </span>
+            <span style="font-size:13px;font-weight:600;color:#1D1D1F;flex-shrink:0;min-width:64px;text-align:right;">${fmtMoney(t)}</span>
+        </div>`;
     }).join('');
     const cartItemsEl = document.getElementById('cart-items');
     if (cartItemsEl) cartItemsEl.innerHTML = cartItemsHtml;
@@ -910,13 +1064,13 @@ function confirmOrder() {
 
     const orderItems = items.map(([id,qty])=>{
         const p = prod(parseInt(id));
-        return { productId:p.id, name:p.name, sku:p.sku, qty, price: effPrice(p,c.taxRegime), discountPct:0 };
+        return { productId:p.id, name:p.name, sku:p.sku, qty, price: effPrice(p,c.taxRegime), discountPct: (cartDiscounts[id]||0)/100 };
     });
 
     const deliveryDate = document.getElementById('ped-delivery').value || null;
     const notes = document.getElementById('ped-notes').value.trim() || null;
 
-    const o = buildOrder(c.id, indKey, paymentMethod, orderItems, discPct, 0, 'enviado', { deliveryDate, notes });
+    const o = buildOrder(c.id, indKey, paymentMethod, orderItems, discPct, 0, 'enviado', { deliveryDate, notes, ownerId: currentMemberId(), source:'rep' });
     S.addOrder(o);
     lastConfirmedOrder = o;
 
@@ -925,8 +1079,10 @@ function confirmOrder() {
     document.getElementById('ok-ind').textContent = IND[indKey];
     document.getElementById('ok-total').textContent = fmtMoney(o.total);
     document.getElementById('ok-dt').textContent = new Date(o.date).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const hasRefer = o.items.some(it=>{ const p=prod(it.productId); return p&&p.ind==='refer'; });
+    document.getElementById('ok-amend-btn').style.display = hasRefer ? 'flex' : 'none';
 
-    cart={}; fromClient=false;
+    cart={}; cartDiscounts={}; fromClient=false;
     showScreen('ok');
 }
 
@@ -1033,6 +1189,11 @@ function downloadOkPdf() {
     toast('PDF do pedido gerado!');
 }
 
+function downloadOkAmendExcel() {
+    if (!lastConfirmedOrder) return;
+    generateAmendExcel(lastConfirmedOrder.id);
+}
+
 // ======================
 // TAREFAS
 // ======================
@@ -1044,12 +1205,50 @@ let tfView = 'calendar';
 let tfCalDate = new Date();
 let tfSelectedDay = todayStr();
 let tfVisibleMembers = null;
+let tfActiveTeamId = null;
 const TASK_TYPE_DOT = { lembrete:'#2563EB', visita:'#16A34A', ligacao:'#9333EA' };
+
+function allowedMemberIdsForTeam(teamId, category) {
+    const mid = currentMemberId();
+    if (!mid) return [];
+    const team = S.teams().find(t=>t.id===teamId);
+    if (!team || !team.memberIds.includes(mid)) return [mid];
+    if (team.adminId===mid) return [...team.memberIds];
+    const perms = S.teamPerms();
+    const viewerPerms = perms[teamId] && perms[teamId][mid];
+    return (viewerPerms && viewerPerms[category]) || [mid];
+}
+
+function renderTfTeamSelector() {
+    const box = document.getElementById('tf-team-selector');
+    if (!box) return;
+    const mid = currentMemberId();
+    const teams = mid ? myTeams() : [];
+    if (teams.length<=1) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        tfActiveTeamId = teams.length===1 ? teams[0].id : null;
+        return;
+    }
+    if (!tfActiveTeamId || !teams.find(t=>t.id===tfActiveTeamId)) tfActiveTeamId = teams[0].id;
+    box.style.display = 'flex';
+    box.innerHTML = `<span style="font-size:11px;font-weight:700;color:#86868B;align-self:center;margin-right:2px;">Equipe:</span>` +
+        teams.map(t=>`<button class="chip ${tfActiveTeamId===t.id?'active':''}" onclick="setTfTeam('${t.id}')">${t.name}</button>`).join('');
+}
+
+function setTfTeam(teamId) {
+    tfActiveTeamId = teamId;
+    tfVisibleMembers = null;
+    renderTfTeamSelector();
+    renderTfMemberChips();
+    renderTfView();
+}
 
 function tfVisibleTasks() {
     const mid = currentMemberId();
     if (!mid) return S.tasks(); // contas sem equipe (ex.: fornecedor) não filtram
-    if (!tfVisibleMembers) tfVisibleMembers = allowedMemberIds('tarefas');
+    if (!tfActiveTeamId) return S.tasks().filter(t=>(t.ownerId||mid)===mid);
+    if (!tfVisibleMembers) tfVisibleMembers = allowedMemberIdsForTeam(tfActiveTeamId, 'tarefas');
     return S.tasks().filter(t=>tfVisibleMembers.includes(t.ownerId||mid));
 }
 
@@ -1057,8 +1256,8 @@ function renderTfMemberChips() {
     const box = document.getElementById('tf-member-chips');
     if (!box) return;
     const mid = currentMemberId();
-    const allowed = mid ? allowedMemberIds('tarefas') : [];
-    if (!mid || allowed.length<=1) { box.style.display='none'; return; }
+    const allowed = (mid && tfActiveTeamId) ? allowedMemberIdsForTeam(tfActiveTeamId, 'tarefas') : [];
+    if (!mid || allowed.length<=1) { box.style.display='none'; box.innerHTML=''; return; }
     if (!tfVisibleMembers) tfVisibleMembers = [...allowed];
     box.style.display='flex';
     box.innerHTML = `<span style="font-size:11px;font-weight:700;color:#86868B;align-self:center;margin-right:2px;">Ver agenda de:</span>` +
@@ -1066,7 +1265,7 @@ function renderTfMemberChips() {
 }
 
 function toggleTfMember(id) {
-    if (!tfVisibleMembers) tfVisibleMembers = allowedMemberIds('tarefas');
+    if (!tfVisibleMembers) tfVisibleMembers = allowedMemberIdsForTeam(tfActiveTeamId, 'tarefas');
     tfVisibleMembers = tfVisibleMembers.includes(id) ? tfVisibleMembers.filter(x=>x!==id) : [...tfVisibleMembers, id];
     if (!tfVisibleMembers.length) tfVisibleMembers = [currentMemberId()];
     renderTfMemberChips();
@@ -1074,6 +1273,7 @@ function toggleTfMember(id) {
 }
 
 function loadTarefas() {
+    renderTfTeamSelector();
     const tasks = tfVisibleTasks();
     const pendCount = tasks.filter(t=>t.status==='pendente'||t.status==='remarcada').length;
     document.getElementById('tf-subtitle').textContent = pendCount+' pendente'+(pendCount!==1?'s':'');
@@ -1173,7 +1373,7 @@ function tfTaskCardHtml(t, cmap) {
     const mid = currentMemberId();
     const ownerId = t.ownerId || mid;
     const showOwner = mid && ownerId !== mid;
-    const editable = !mid || ownerId === mid;
+    const editable = canManageTask(t);
     return `<div class="card" style="padding:12px 14px;background:${bg};border-color:${border};${isDone?'opacity:.65;':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
             <div style="flex:1;min-width:0;">
@@ -1193,10 +1393,21 @@ function tfTaskCardHtml(t, cmap) {
                 <select class="status-sel" onchange="changeTaskStatus('${t.id}', this.value)" ${editable?'':'disabled'}>
                     ${Object.entries(TASK_STATUS_LABEL).map(([v,l])=>`<option value="${v}" ${v===t.status?'selected':''}>${l}</option>`).join('')}
                 </select>
-                ${editable?`<button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:#86868B;font-size:13px;padding:2px 4px;" title="Excluir tarefa"><i class="fas fa-trash"></i></button>`:''}
+                ${editable?`<div style="display:flex;gap:8px;">
+                    <button onclick="openEditTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:13px;padding:2px 4px;" title="Editar tarefa"><i class="fas fa-pen"></i></button>
+                    <button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:#86868B;font-size:13px;padding:2px 4px;" title="Excluir tarefa"><i class="fas fa-trash"></i></button>
+                </div>`:''}
             </div>
         </div>
     </div>`;
+}
+
+function canManageTask(t) {
+    const mid = currentMemberId();
+    if (!mid) return true;
+    const ownerId = t.ownerId || mid;
+    if (ownerId === mid) return true;
+    return myTeams().some(team=>team.adminId===mid && team.memberIds.includes(ownerId));
 }
 
 function setTfChip(f,el) {
@@ -1246,18 +1457,57 @@ function updateTask(id, patch) {
     loadTarefas();
 }
 
+function adminTeamForMember(memberId) {
+    const mid = currentMemberId();
+    if (!mid) return null;
+    return myTeams().find(team=>team.adminId===mid && team.memberIds.includes(memberId)) || null;
+}
+
+function renderAssigneeSelect(currentOwnerId) {
+    const wrap = document.getElementById('nt-assignee-wrap');
+    const sel = document.getElementById('nt-assignee');
+    const mid = currentMemberId();
+    const team = adminTeamForMember(currentOwnerId||mid);
+    if (team) {
+        sel.innerHTML = team.memberIds.map(id=>`<option value="${id}" ${id===(currentOwnerId||mid)?'selected':''}>${memberDisplayName(id)}${id===mid?' (você)':''}</option>`).join('');
+        wrap.style.display = 'block';
+    } else {
+        wrap.style.display = 'none';
+    }
+}
+
 function openNewTask() {
+    editingTaskId = null;
     document.getElementById('nt-title').value='';
     document.getElementById('nt-date').value=todayStr();
     document.getElementById('nt-notes').value='';
     const csel = document.getElementById('nt-client');
     csel.innerHTML = '<option value="">Sem cliente vinculado</option>'+visibleClients().map(c=>`<option value="${c.id}">${c.nomeFantasia}</option>`).join('');
     const opts = document.getElementById('nt-type-opts');
-    let chosen='lembrete';
     opts.innerHTML = Object.entries(TASK_TYPE_LABEL).map(([v,l],i)=>`<button type="button" class="pay-opt ${i===0?'active':''}" data-type="${v}" onclick="this.parentElement.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${l}</button>`).join('');
+    renderAssigneeSelect(currentMemberId());
+    document.getElementById('modal-newtask-title').textContent = 'Nova tarefa';
+    document.getElementById('modal-newtask-submit').innerHTML = '<i class="fas fa-check"></i>Criar tarefa';
     document.getElementById('modal-newtask').classList.add('show');
 }
-function closeNewTask() { document.getElementById('modal-newtask').classList.remove('show'); }
+function closeNewTask() { document.getElementById('modal-newtask').classList.remove('show'); editingTaskId = null; }
+
+function openEditTask(id) {
+    const t = S.tasks().find(x=>x.id===id);
+    if (!t || !canManageTask(t)) return;
+    editingTaskId = id;
+    document.getElementById('nt-title').value = t.title;
+    document.getElementById('nt-date').value = t.dueDate;
+    document.getElementById('nt-notes').value = t.notes||'';
+    const csel = document.getElementById('nt-client');
+    csel.innerHTML = '<option value="">Sem cliente vinculado</option>'+visibleClients().map(c=>`<option value="${c.id}" ${c.id===t.clientId?'selected':''}>${c.nomeFantasia}</option>`).join('');
+    const opts = document.getElementById('nt-type-opts');
+    opts.innerHTML = Object.entries(TASK_TYPE_LABEL).map(([v,l])=>`<button type="button" class="pay-opt ${v===t.type?'active':''}" data-type="${v}" onclick="this.parentElement.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${l}</button>`).join('');
+    renderAssigneeSelect(t.ownerId||currentMemberId());
+    document.getElementById('modal-newtask-title').textContent = 'Editar tarefa';
+    document.getElementById('modal-newtask-submit').innerHTML = '<i class="fas fa-check"></i>Salvar alterações';
+    document.getElementById('modal-newtask').classList.add('show');
+}
 
 function submitNewTask() {
     const title = document.getElementById('nt-title').value.trim();
@@ -1267,8 +1517,21 @@ function submitNewTask() {
     const type = typeBtn ? typeBtn.dataset.type : 'lembrete';
     const clientId = document.getElementById('nt-client').value;
     const notes = document.getElementById('nt-notes').value.trim();
+    const wrap = document.getElementById('nt-assignee-wrap');
+    const assigneeSel = document.getElementById('nt-assignee');
+    const ownerId = (wrap.style.display!=='none' && assigneeSel.value) ? assigneeSel.value : currentMemberId();
+
+    if (editingTaskId) {
+        const id = editingTaskId;
+        editingTaskId = null;
+        closeNewTask();
+        updateTask(id, { title, type, dueDate:date, clientId: clientId?parseInt(clientId):null, notes: notes||null, ownerId });
+        toast('Tarefa atualizada!');
+        return;
+    }
+
     const tasks = S.tasks();
-    tasks.push({ id:'t'+Date.now(), ownerId: currentMemberId(), clientId: clientId?parseInt(clientId):null, title, type, dueDate:date, status:'pendente', rescheduledTo:null, notes: notes||null });
+    tasks.push({ id:'t'+Date.now(), ownerId, clientId: clientId?parseInt(clientId):null, title, type, dueDate:date, status:'pendente', rescheduledTo:null, notes: notes||null });
     S.setTasks(tasks);
     closeNewTask();
     toast('Tarefa criada!');
@@ -1333,8 +1596,59 @@ function saveGoals() {
 // ======================
 // FINANCEIRO
 // ======================
+const FIN_REVENUE_STATUSES = ['enviado','confirmado'];
+let finCharts = {};
+let finRepFilter = 'all';
+
+function finScopedOrders() {
+    const all = visibleOrders();
+    return finRepFilter==='all' ? all : all.filter(o=>(o.ownerId||'u1')===finRepFilter);
+}
+
+function finScopedClients() {
+    const all = visibleClients();
+    return finRepFilter==='all' ? all : all.filter(c=>(c.ownerId||'u1')===finRepFilter);
+}
+
+function setFinRepFilter(id) { finRepFilter = id; loadFinanceiro(); }
+
+function finRevenueForMonth(monthKey) {
+    return finScopedOrders().filter(o=>o.date.slice(0,7)===monthKey && FIN_REVENUE_STATUSES.includes(o.status)).reduce((s,o)=>s+o.total,0);
+}
+
+function clientOrderStats(clientId) {
+    const os = finScopedOrders().filter(o=>o.clientId===clientId && FIN_REVENUE_STATUSES.includes(o.status)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    if (!os.length) return null;
+    const avgOrderValue = os.reduce((s,o)=>s+o.total,0)/os.length;
+    const lastOrderDate = new Date(os[os.length-1].date);
+    if (os.length<2) return { avgOrderValue, avgInterval:null, lastOrderDate, predictedNextDate:null, ordersCount:os.length };
+    let totalGap=0;
+    for (let i=1;i<os.length;i++) totalGap += (new Date(os[i].date)-new Date(os[i-1].date))/864e5;
+    const avgInterval = totalGap/(os.length-1);
+    const predictedNextDate = new Date(lastOrderDate.getTime()+avgInterval*864e5);
+    return { avgOrderValue, avgInterval, lastOrderDate, predictedNextDate, ordersCount:os.length };
+}
+
+function destroyFinChart(key) { if (finCharts[key]) { finCharts[key].destroy(); delete finCharts[key]; } }
+
 function loadFinanceiro() {
-    const clients = visibleClients();
+    const isTeamAdmin = myTeams().some(t=>t.adminId===currentMemberId());
+    const filterWrap = document.getElementById('fin-rep-filter-wrap');
+    if (isTeamAdmin) {
+        const allowed = allowedMemberIds('clientes');
+        const sel = document.getElementById('fin-rep-filter');
+        const prev = sel.value;
+        sel.innerHTML = `<option value="all">Ver: Todos os representantes</option>` +
+            allowed.map(id=>`<option value="${id}">Ver: ${memberDisplayName(id)}</option>`).join('');
+        sel.value = allowed.includes(prev) ? prev : finRepFilter;
+        if (!allowed.includes(finRepFilter)) finRepFilter = 'all';
+        filterWrap.style.display = 'block';
+    } else {
+        finRepFilter = 'all';
+        filterWrap.style.display = 'none';
+    }
+
+    const clients = finScopedClients();
     const goals = S.goals();
     const rate = S.settings().commissionRate;
     const today = new Date();
@@ -1342,25 +1656,103 @@ function loadFinanceiro() {
     const dayOfMonth = today.getDate();
     const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
 
-    const monthRevenue = revenueForMonth(monthKey);
+    const monthRevenue = finRevenueForMonth(monthKey);
     const monthCommission = monthRevenue * rate;
-    document.getElementById('fin-commission').textContent = fmtMoney(monthCommission);
-    document.getElementById('fin-commission-sub').textContent = fmtMoney(monthRevenue)+' em vendas · taxa de '+(rate*100).toFixed(0)+'%';
+    const monthOrders = finScopedOrders().filter(o=>o.date.slice(0,7)===monthKey && FIN_REVENUE_STATUSES.includes(o.status));
+    const avgTicketAll = monthOrders.length ? monthRevenue/monthOrders.length : 0;
+    const overdueClients = clients.filter(c=>c.owe>0);
+
+    document.getElementById('fin-subtitle').textContent = finRepFilter!=='all'
+        ? 'Visão individual de '+memberDisplayName(finRepFilter)+' — comissões, recebíveis e previsão de fluxo'
+        : (isTeamAdmin ? 'Visão consolidada da equipe — comissões, recebíveis e previsão de fluxo' : 'Comissões, recebíveis e previsão de fluxo');
+
+    document.getElementById('fin-totals').innerHTML = `
+        <div class="sc"><div class="sc-icon"><i class="fas fa-sack-dollar"></i></div><div style="font-size:20px;font-weight:800;color:#1D1D1F;">${fmtMoney(monthCommission)}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Comissão do mês (${(rate*100).toFixed(0)}%)</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-chart-line"></i></div><div style="font-size:20px;font-weight:800;color:#1D1D1F;">${fmtMoney(monthRevenue)}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Faturamento do mês</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-users"></i></div><div style="font-size:20px;font-weight:800;color:#1D1D1F;">${clients.length}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Clientes na carteira</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-receipt"></i></div><div style="font-size:20px;font-weight:800;color:#1D1D1F;">${fmtMoney(avgTicketAll)}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Ticket médio do mês</div></div>
+    `;
 
     const projectedRevenue = dayOfMonth>0 ? (monthRevenue/dayOfMonth)*daysInMonth : 0;
     const projectedPct = Math.round((projectedRevenue/goals.revenueTarget)*100) || 0;
-    document.getElementById('fin-projection').innerHTML = `No ritmo atual, sua projeção é fechar o mês em <b>${fmtMoney(projectedRevenue)}</b> (${projectedPct}% da meta de ${fmtMoney(goals.revenueTarget)}), gerando aproximadamente <b>${fmtMoney(projectedRevenue*rate)}</b> em comissão.`;
+    document.getElementById('fin-projection').innerHTML = `No ritmo atual, a projeção é fechar o mês em <b>${fmtMoney(projectedRevenue)}</b> (${projectedPct}% da meta de ${fmtMoney(goals.revenueTarget)}), gerando aproximadamente <b>${fmtMoney(projectedRevenue*rate)}</b> em comissão.`;
 
     const history = [];
-    for (let i=2;i>=0;i--) {
+    for (let i=5;i>=0;i--) {
         const dt = new Date(today.getFullYear(), today.getMonth()-i, 1);
         const key = dt.toISOString().slice(0,7);
-        const rev = revenueForMonth(key);
-        history.push({ label: dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}), commission: rev*rate });
+        const rev = finRevenueForMonth(key);
+        history.push({ label: dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}).replace('.',''), fullLabel: dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}), revenue: rev, commission: rev*rate });
     }
-    document.getElementById('fin-history').innerHTML = history.map(h=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 10px;border-bottom:1px solid #F5F5F7;"><span style="font-size:13px;color:#3A3A3C;text-transform:capitalize;">${h.label}</span><span style="font-size:13px;font-weight:700;color:#15803D;">${fmtMoney(h.commission)}</span></div>`).join('');
+    document.getElementById('fin-history').innerHTML = history.slice(-3).map(h=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 10px;border-bottom:1px solid #F5F5F7;"><span style="font-size:13px;color:#3A3A3C;text-transform:capitalize;">${h.fullLabel}</span><span style="font-size:13px;font-weight:700;color:#15803D;">${fmtMoney(h.commission)}</span></div>`).join('');
 
-    const overdue = clients.filter(c=>c.owe>0).sort((a,b)=>b.owe-a.owe);
+    destroyFinChart('revenue');
+    finCharts.revenue = new Chart(document.getElementById('fin-chart-revenue'), {
+        type: 'bar',
+        data: { labels: history.map(h=>h.label), datasets: [{ label:'Faturamento', data: history.map(h=>h.revenue), backgroundColor:'#16A34A', borderRadius:6, maxBarThickness:34 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtMoney(c.parsed.y)}}}, scales:{ y:{ ticks:{ callback:v=>fmtMoney(v) } } } }
+    });
+
+    // ---- Previsão de fluxo de caixa: intervalo médio x ticket médio por cliente ----
+    const weekBuckets = [0,0,0,0];
+    const upcoming = [];
+    clients.forEach(c=>{
+        const stats = clientOrderStats(c.id);
+        if (!stats || !stats.predictedNextDate) return;
+        const daysAhead = Math.round((stats.predictedNextDate-today)/864e5);
+        const bucket = Math.min(3, Math.max(0, Math.floor((daysAhead<0?0:daysAhead)/7)));
+        weekBuckets[bucket] += stats.avgOrderValue;
+        upcoming.push({ client:c, ...stats, daysAhead });
+    });
+    upcoming.sort((a,b)=>a.daysAhead-b.daysAhead);
+
+    destroyFinChart('forecast');
+    finCharts.forecast = new Chart(document.getElementById('fin-chart-forecast'), {
+        type: 'bar',
+        data: { labels:['Semana 1','Semana 2','Semana 3','Semana 4'], datasets:[{ label:'Previsto', data: weekBuckets, backgroundColor:'#2563EB', borderRadius:6, maxBarThickness:34 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtMoney(c.parsed.y)}}}, scales:{ y:{ ticks:{ callback:v=>fmtMoney(v) } } } }
+    });
+    const totalForecast = weekBuckets.reduce((s,v)=>s+v,0);
+    document.getElementById('fin-forecast-note').innerHTML = upcoming.length
+        ? `Baseado no intervalo médio entre pedidos e no ticket médio de ${upcoming.length} cliente${upcoming.length!==1?'s':''} com histórico. Total previsto para as próximas 4 semanas: <b>${fmtMoney(totalForecast)}</b>.`
+        : 'Ainda não há clientes com pelo menos 2 pedidos para calcular uma previsão de fluxo confiável.';
+
+    document.getElementById('fin-upcoming').innerHTML = upcoming.length===0
+        ? `<p style="font-size:12px;color:#86868B;text-align:center;padding:10px 0;">Sem previsões disponíveis ainda.</p>`
+        : upcoming.slice(0,5).map(u=>`<div class="mini-row" onclick="openClient(${u.client.id})" style="cursor:pointer;">
+            <div><div style="font-size:13px;font-weight:600;color:#1D1D1F;">${u.client.nomeFantasia}</div><div style="font-size:11px;color:#86868B;">${u.daysAhead<=0?'Previsto para esta semana':'Previsto em '+u.daysAhead+' dias'} · ticket médio ${fmtMoney(u.avgOrderValue)}</div></div>
+            <i class="fas fa-chevron-right" style="color:#C7C7CC;font-size:11px;"></i>
+        </div>`).join('');
+
+    const curveCounts = { A:0, B:0, C:0 };
+    clients.forEach(c=>{ if (curveCounts[c.cls]!==undefined) curveCounts[c.cls]++; });
+    destroyFinChart('curve');
+    finCharts.curve = new Chart(document.getElementById('fin-chart-curve'), {
+        type: 'doughnut',
+        data: { labels:['Curva A','Curva B','Curva C'], datasets:[{ data:[curveCounts.A,curveCounts.B,curveCounts.C], backgroundColor:['#16A34A','#F59E0B','#EF4444'], borderWidth:0 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:11}}}} }
+    });
+
+    const teamBox = document.getElementById('fin-team-box');
+    if (isTeamAdmin) {
+        teamBox.style.display = 'block';
+        const myTeam = myTeams().find(t=>t.adminId===currentMemberId());
+        const memberRevs = myTeam.memberIds.map(id=>{
+            const rev = S.orders().filter(o=>o.ownerId===id && o.date.slice(0,7)===monthKey && FIN_REVENUE_STATUSES.includes(o.status)).reduce((s,o)=>s+o.total,0);
+            return { id, name: memberDisplayName(id), rev };
+        }).sort((a,b)=>b.rev-a.rev);
+        const maxRev = Math.max(...memberRevs.map(m=>m.rev), 1);
+        document.getElementById('fin-team-bars').innerHTML = memberRevs.map(m=>{
+            const selected = finRepFilter===m.id;
+            return `
+            <div onclick="setFinRepFilter('${m.id}')" style="cursor:pointer;${selected?'background:#F0FDF4;border-radius:8px;padding:6px;margin:-6px;':''}">
+                <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:12px;font-weight:${selected?800:600};color:#1D1D1F;"><span class="member-dot" style="background:${memberColor(m.id)};margin-right:6px;"></span>${m.name}${selected?' <i class=\"fas fa-filter\" style=\"font-size:10px;color:#16A34A;\"></i>':''}</span><span style="font-size:12px;font-weight:700;color:#15803D;">${fmtMoney(m.rev)}</span></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${(m.rev/maxRev)*100}%;background:${memberColor(m.id)};"></div></div>
+            </div>`;
+        }).join('');
+    } else { teamBox.style.display = 'none'; }
+
+    const overdue = overdueClients.sort((a,b)=>b.owe-a.owe);
     document.getElementById('fin-receivable-total').textContent = fmtMoney(overdue.reduce((s,c)=>s+c.owe,0));
     document.getElementById('fin-receivables').innerHTML = overdue.length===0
         ? `<div style="text-align:center;padding:20px 0;color:#86868B;font-size:13px;"><i class="fas fa-check-circle" style="font-size:26px;color:#16A34A;display:block;margin-bottom:8px;"></i>Nenhum valor em aberto</div>`
@@ -1390,37 +1782,60 @@ function memberDisplayName(id) {
 function memberColor(id) { return TEAM_MEMBER_COLORS[id] || '#6E6E73'; }
 
 function memberStats(id) {
-    if (id==='u1') {
+    if (id===currentMemberId()) {
         const goals = S.goals();
         const monthKey = new Date().toISOString().slice(0,7);
         return {
             id, name: memberDisplayName(id),
-            revenue: revenueForMonth(monthKey), goalRevenue: goals.revenueTarget,
-            visits: S.visits().filter(v=>v.ownerId==='u1' && v.date.slice(0,7)===monthKey).length, goalVisits: goals.visitsTarget,
-            clients: S.clients().filter(c=>c.ownerId==='u1').length,
-            pendingTasks: S.tasks().filter(t=>t.ownerId==='u1' && (t.status==='pendente'||t.status==='remarcada')).length,
+            revenue: revenueForMonthOwner(monthKey, id), goalRevenue: goals.revenueTarget,
+            visits: S.visits().filter(v=>v.ownerId===id && v.date.slice(0,7)===monthKey).length, goalVisits: goals.visitsTarget,
+            clients: S.clients().filter(c=>c.ownerId===id).length,
+            pendingTasks: S.tasks().filter(t=>(t.ownerId||id)===id && (t.status==='pendente'||t.status==='remarcada')).length,
         };
     }
     const seed = TEAM_MEMBER_SEED[id] || {id, revenue:0, goalRevenue:1, visits:0, goalVisits:1, clients:0, pendingTasks:0};
     return { ...seed, id, name: memberDisplayName(id) };
 }
 
+const TEAM_TRASH_HOURS = 24;
+
+function purgeExpiredTeamTrash() {
+    const cutoff = Date.now() - TEAM_TRASH_HOURS*3600e3;
+    const teams = S.teams();
+    const kept = teams.filter(t=>!t.deletedAt || new Date(t.deletedAt).getTime() > cutoff);
+    if (kept.length !== teams.length) S.setTeams(kept);
+}
+
 function myTeams() {
     const mid = currentMemberId();
     if (!mid) return [];
-    return S.teams().filter(t=>t.memberIds.includes(mid));
+    return S.teams().filter(t=>!t.deletedAt && t.memberIds.includes(mid));
 }
 
 function joinableTeams() {
     const mid = currentMemberId();
     if (!mid) return [];
-    return S.teams().filter(t=>t.joinable && !t.memberIds.includes(mid));
+    return S.teams().filter(t=>!t.deletedAt && t.joinable && !t.memberIds.includes(mid));
+}
+
+function trashedTeams() {
+    const mid = currentMemberId();
+    if (!mid) return [];
+    return S.teams().filter(t=>t.deletedAt && t.adminId===mid);
 }
 
 function loadEquipe() {
+    purgeExpiredTeamTrash();
     const teams = myTeams();
     const noteam = document.getElementById('equipe-noteam');
     const content = document.getElementById('equipe-content');
+    const trashBtn = document.getElementById('equipe-trash-btn');
+    const trashCount = trashedTeams().length;
+    if (trashBtn) {
+        trashBtn.style.display = trashCount ? 'flex' : 'none';
+        const badge = document.getElementById('equipe-trash-count');
+        if (badge) badge.textContent = trashCount;
+    }
     if (!teams.length) {
         noteam.style.display = 'block';
         content.style.display = 'none';
@@ -1432,6 +1847,25 @@ function loadEquipe() {
     if (!equipeActiveTeamId || !teams.find(t=>t.id===equipeActiveTeamId)) equipeActiveTeamId = teams[0].id;
     renderEquipeTabs();
     renderEquipeDashboard();
+}
+
+function openEquipeTrash() {
+    const list = trashedTeams();
+    document.getElementById('equipe-trash-list').innerHTML = list.length===0
+        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:16px 0;">Lixeira vazia.</p>`
+        : list.map(t=>{
+            const hoursLeft = Math.max(0, TEAM_TRASH_HOURS - (Date.now()-new Date(t.deletedAt).getTime())/3600e3);
+            return `<div class="mini-row"><div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">${t.name}</div><div style="font-size:11px;color:#86868B;">${t.memberIds.length} membros · expira em ${hoursLeft.toFixed(1)}h</div></div><button onclick="restoreTeam('${t.id}')" class="btn-p" style="width:auto;padding:8px 14px;font-size:12px;"><i class="fas fa-trash-arrow-up"></i> Restaurar</button></div>`;
+        }).join('');
+    document.getElementById('modal-equipe-trash').classList.add('show');
+}
+function closeEquipeTrash() { document.getElementById('modal-equipe-trash').classList.remove('show'); }
+
+function restoreTeam(teamId) {
+    S.setTeams(S.teams().map(t=>t.id===teamId?{...t,deletedAt:null}:t));
+    toast('Equipe restaurada!');
+    closeEquipeTrash();
+    loadEquipe();
 }
 
 function renderEquipeTabs() {
@@ -1471,10 +1905,10 @@ function renderEquipeDashboard() {
     `;
 
     document.getElementById('equipe-totals').innerHTML = `
-        <div class="sc"><i class="fas fa-people-group" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${members.length}</div><div style="font-size:11px;color:#86868B;margin-top:3px;">Membros</div></div>
-        <div class="sc"><i class="fas fa-sack-dollar" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${fmtMoney(totalRevenue)}</div><div style="font-size:11px;color:#86868B;margin-top:3px;">Faturamento (mês)</div></div>
-        <div class="sc"><i class="fas fa-users" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${totalClients}</div><div style="font-size:11px;color:#86868B;margin-top:3px;">Clientes na carteira</div></div>
-        <div class="sc"><i class="fas fa-bullseye" style="color:#16A34A;font-size:16px;margin-bottom:6px;display:block;"></i><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${avgPct}%</div><div style="font-size:11px;color:#86868B;margin-top:3px;">Meta média atingida</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-people-group"></i></div><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${members.length}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Membros</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-sack-dollar"></i></div><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${fmtMoney(totalRevenue)}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Faturamento (mês)</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-users"></i></div><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${totalClients}</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Clientes na carteira</div></div>
+        <div class="sc"><div class="sc-icon"><i class="fas fa-bullseye"></i></div><div style="font-size:22px;font-weight:800;color:#1D1D1F;">${avgPct}%</div><div style="font-size:11px;color:#86868B;margin-top:1px;">Meta média atingida</div></div>
     `;
 
     const maxRevenue = Math.max(...members.map(m=>m.revenue),1);
@@ -1588,11 +2022,10 @@ function renameTeam(teamId) {
 function deleteTeam(teamId) {
     const team = S.teams().find(t=>t.id===teamId);
     if (!team) return;
-    if (!confirm('Excluir a equipe "'+team.name+'"? Essa ação não pode ser desfeita.')) return;
-    S.setTeams(S.teams().filter(t=>t.id!==teamId));
-    const perms = S.teamPerms(); delete perms[teamId]; S.setTeamPerms(perms);
+    if (!confirm('Excluir a equipe "'+team.name+'"? Você terá 24h para recuperá-la na lixeira.')) return;
+    S.setTeams(S.teams().map(t=>t.id===teamId?{...t,deletedAt:new Date().toISOString()}:t));
     if (equipeActiveTeamId===teamId) equipeActiveTeamId = null;
-    toast('Equipe excluída');
+    toast('Equipe excluída — disponível na lixeira por 24h');
     loadEquipe();
 }
 
@@ -1754,10 +2187,31 @@ const LEAD_STATUS_LABEL = { novo:'Novo', contatado:'Contatado', qualificado:'Qua
 const LEAD_STATUS_COLOR = { novo:'#6E6E73', contatado:'#2563EB', qualificado:'#9333EA', convertido:'#16A34A', perdido:'#DC2626' };
 let leadChip = 'all';
 
+function visibleLeads() {
+    const mid = currentMemberId();
+    if (!mid) return S.leads();
+    const allowed = allowedMemberIds('clientes');
+    return S.leads().filter(l=>allowed.includes(l.ownerId||'u1'));
+}
+
 function loadLeads() {
-    const leads = S.leads();
+    const leads = visibleLeads();
     const open = leads.filter(l=>l.status!=='convertido' && l.status!=='perdido').length;
     document.getElementById('leads-subtitle').textContent = open+' em aberto · '+leads.length+' no total';
+
+    const isAdmin = myTeams().some(t=>t.adminId===currentMemberId());
+    const wrap = document.getElementById('leads-rep-filter-wrap');
+    if (isAdmin) {
+        const allowed = allowedMemberIds('clientes');
+        const sel = document.getElementById('leads-rep-filter');
+        const prev = sel.value;
+        sel.innerHTML = `<option value="all">Todos os representantes</option>` +
+            allowed.map(id=>`<option value="${id}">${memberDisplayName(id)}</option>`).join('');
+        sel.value = allowed.includes(prev) ? prev : 'all';
+        wrap.style.display = 'block';
+    } else {
+        wrap.style.display = 'none';
+    }
     renderLeads();
 }
 
@@ -1770,8 +2224,11 @@ function setLeadChip(s,el) {
 
 function renderLeads() {
     const q = (document.getElementById('leads-search')?.value||'').toLowerCase();
-    let leads = [...S.leads()].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const isAdmin = myTeams().some(t=>t.adminId===currentMemberId());
+    const repFilter = document.getElementById('leads-rep-filter')?.value || 'all';
+    let leads = [...visibleLeads()].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     if (leadChip!=='all') leads = leads.filter(l=>l.status===leadChip);
+    if (isAdmin && repFilter!=='all') leads = leads.filter(l=>(l.ownerId||'u1')===repFilter);
     if (q) leads = leads.filter(l=>(l.nomeFantasia||'').toLowerCase().includes(q) || (l.razaoSocial||'').toLowerCase().includes(q));
     const list = document.getElementById('leads-list');
     if (!leads.length) { list.innerHTML = `<p style="text-align:center;color:#86868B;font-size:13px;padding:30px 0;grid-column:1/-1;">Nenhum lead encontrado.</p>`; return; }
@@ -1782,6 +2239,7 @@ function renderLeads() {
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:14px;font-weight:700;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.nomeFantasia}</div>
                     <div style="font-size:11px;color:#86868B;margin-top:2px;">${l.cnpj||'sem CNPJ'}</div>
+                    ${isAdmin?`<span class="badge" style="background:#F5F5F7;color:#3A3A3C;margin-top:4px;display:inline-flex;align-items:center;"><span class="member-dot" style="background:${memberColor(l.ownerId||'u1')};width:7px;height:7px;margin-right:4px;"></span>${memberDisplayName(l.ownerId||'u1')}</span>`:''}
                 </div>
                 <select class="status-sel" onchange="changeLeadStatus('${l.id}', this.value)" style="color:${LEAD_STATUS_COLOR[l.status]};flex-shrink:0;">
                     ${Object.entries(LEAD_STATUS_LABEL).map(([v,lb])=>`<option value="${v}" ${v===l.status?'selected':''}>${lb}</option>`).join('')}
@@ -1854,6 +2312,7 @@ function submitNewLead() {
     const leads = S.leads();
     leads.push({
         id:'lead'+Date.now(), orgId:'org-team', status:'novo', createdAt: new Date().toISOString(),
+        ownerId: currentMemberId()||'u1',
         razaoSocial:name, nomeFantasia:name, cnpj: document.getElementById('nl-cnpj').value.trim(),
         phone: document.getElementById('nl-phone').value.trim(), region: document.getElementById('nl-region').value.trim(),
         notes: document.getElementById('nl-notes').value.trim()||null,
@@ -2299,6 +2758,566 @@ function toast(msg) {
     t._timer=setTimeout(()=>t.classList.remove('show'),2500);
 }
 
+// ======================
+// PEDIDOS (todos os pedidos + status)
+// ======================
+const ORDER_STATUS_LABEL = { aberto:'Em aberto', enviado:'Enviado', confirmado:'Confirmado', cancelado:'Cancelado' };
+const ORDER_STATUS_COLOR = { aberto:'#D97706', enviado:'#2563EB', confirmado:'#15803D', cancelado:'#DC2626' };
+
+function orderClientInfo(order) {
+    if (order.clientId) {
+        const c = S.clients().find(x=>x.id===order.clientId);
+        if (c) return { nomeFantasia:c.nomeFantasia, razaoSocial:c.name, cnpj:c.cnpj, taxRegime:c.taxRegime, email:c.emailCompras, phone:c.phone, city:c.city, state:c.state };
+    }
+    if (order.clientSnapshot) return order.clientSnapshot;
+    return { nomeFantasia:'Cliente não identificado', razaoSocial:'—', cnpj:'—', taxRegime:'Simples Nacional', email:'', phone:'' };
+}
+
+const PEDIDO_TRASH_HOURS = 24;
+
+function purgeExpiredTrash() {
+    const cutoff = Date.now() - PEDIDO_TRASH_HOURS*3600e3;
+    const kept = S.orders().filter(o=>!o.deletedAt || new Date(o.deletedAt).getTime() > cutoff);
+    if (kept.length !== S.orders().length) S.s('orders', kept);
+}
+
+function visibleOrders() {
+    const mid = currentMemberId();
+    const all = S.orders().filter(o=>!o.deletedAt);
+    if (!mid) return all;
+    const allowed = allowedMemberIds('clientes');
+    return all.filter(o=>allowed.includes(o.ownerId));
+}
+
+function trashedOrders() {
+    const mid = currentMemberId();
+    const all = S.orders().filter(o=>!!o.deletedAt);
+    if (!mid) return all;
+    const allowed = allowedMemberIds('clientes');
+    return all.filter(o=>allowed.includes(o.ownerId));
+}
+
+function deletePedido(orderId) {
+    const o = S.orders().find(x=>x.id===orderId);
+    if (!o) return;
+    if (!confirm('Excluir o pedido '+o.protocol+'? Ele ficará disponível na lixeira por 24h.')) return;
+    S.s('orders', S.orders().map(x=>x.id===orderId ? {...x, deletedAt: new Date().toISOString()} : x));
+    closePedidoDetail();
+    toast('Pedido movido para a lixeira — disponível por 24h');
+    loadPedidos();
+}
+
+function restorePedido(orderId) {
+    S.s('orders', S.orders().map(x=>x.id===orderId ? {...x, deletedAt: null} : x));
+    toast('Pedido restaurado!');
+    loadPedidos();
+    openPedidoTrash();
+}
+
+function openPedidoTrash() {
+    const trashed = [...trashedOrders()].sort((a,b)=>new Date(b.deletedAt)-new Date(a.deletedAt));
+    const box = document.getElementById('pd-trash-list');
+    box.innerHTML = trashed.length===0
+        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:20px 0;">A lixeira está vazia.</p>`
+        : trashed.map(o=>{
+            const info = orderClientInfo(o);
+            const hoursLeft = Math.max(0, PEDIDO_TRASH_HOURS - (Date.now()-new Date(o.deletedAt).getTime())/3600e3);
+            return `<div class="mini-row">
+                <div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:#1D1D1F;">${info.nomeFantasia}</div><div style="font-size:11px;color:#86868B;">${o.protocol} · ${fmtMoney(o.total)} · expira em ${hoursLeft.toFixed(1)}h</div></div>
+                <button onclick="restorePedido('${o.id}')" class="btn-s" style="width:auto;padding:7px 12px;font-size:11px;flex-shrink:0;"><i class="fas fa-rotate-left"></i> Restaurar</button>
+            </div>`;
+        }).join('');
+    document.getElementById('modal-pedido-trash').classList.add('show');
+}
+function closePedidoTrash() { document.getElementById('modal-pedido-trash').classList.remove('show'); }
+
+function loadPedidos() {
+    purgeExpiredTrash();
+    const orders = visibleOrders();
+    const openCount = orders.filter(o=>o.status==='aberto').length;
+    const trashCount = trashedOrders().length;
+    document.getElementById('pd-subtitle').textContent = orders.length+' pedido'+(orders.length!==1?'s':'')+(openCount?' · '+openCount+' em aberto':'');
+    const trashBtn = document.getElementById('pd-trash-btn');
+    if (trashBtn) trashBtn.innerHTML = '<i class="fas fa-trash"></i>'+(trashCount?' '+trashCount:'');
+    renderPedidos();
+}
+
+function setPdChip(f, el) {
+    pdFilter = f;
+    el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+    renderPedidos();
+}
+
+function renderPedidos() {
+    const q = (document.getElementById('pd-search')?.value||'').toLowerCase();
+    let orders = [...visibleOrders()].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    if (pdFilter!=='all') orders = orders.filter(o=>o.status===pdFilter);
+    if (q) orders = orders.filter(o=>{
+        const info = orderClientInfo(o);
+        return info.nomeFantasia.toLowerCase().includes(q) || (info.cnpj||'').includes(q) || o.protocol.toLowerCase().includes(q);
+    });
+    const list = document.getElementById('pd-list');
+    if (!orders.length) { list.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#86868B;font-size:13px;padding:30px 0;">Nenhum pedido encontrado.</p>`; return; }
+    list.innerHTML = orders.map(o=>{
+        const info = orderClientInfo(o);
+        const hasRefer = o.items.some(it=>{ const p=prod(it.productId); return p&&p.ind==='refer'; });
+        return `<div class="card" style="padding:14px;cursor:pointer;" onclick="openPedidoDetail('${o.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+                <div style="min-width:0;">
+                    <div style="font-size:14px;font-weight:700;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${info.nomeFantasia}</div>
+                    <div style="font-size:11px;color:#86868B;font-family:monospace;margin-top:1px;">${o.protocol}</div>
+                </div>
+                <span class="badge" style="background:${ORDER_STATUS_COLOR[o.status]}1A;color:${ORDER_STATUS_COLOR[o.status]};flex-shrink:0;">${ORDER_STATUS_LABEL[o.status]||o.status}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:12px;color:#86868B;">${fmtDateBR(o.date)} · ${o.items.length} item${o.items.length!==1?'s':''}${o.source==='forms'?' · <i class="fas fa-file-import"></i> formulário':''}</div>
+                <div style="font-size:14px;font-weight:800;color:#15803D;">${fmtMoney(o.total)}</div>
+            </div>
+            ${hasRefer?`<button onclick="event.stopPropagation();generateAmendExcel('${o.id}')" style="margin-top:10px;width:100%;font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px;cursor:pointer;font-family:'Inter',sans-serif;"><i class="fas fa-file-excel"></i> Gerar planilha Amend</button>`:''}
+        </div>`;
+    }).join('');
+}
+
+function openPedidoDetail(orderId) {
+    const o = S.orders().find(x=>x.id===orderId);
+    if (!o) return;
+    const info = orderClientInfo(o);
+    const hasRefer = o.items.some(it=>{ const p=prod(it.productId); return p&&p.ind==='refer'; });
+    document.getElementById('pd-detail-body').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px;">
+            <div><div style="font-size:15px;font-weight:700;color:#1D1D1F;">${info.nomeFantasia}</div><div style="font-size:12px;color:#86868B;margin-top:2px;">${info.cnpj} · ${info.taxRegime}</div></div>
+            <span class="badge" style="background:${ORDER_STATUS_COLOR[o.status]}1A;color:${ORDER_STATUS_COLOR[o.status]};">${ORDER_STATUS_LABEL[o.status]||o.status}</span>
+        </div>
+        <div style="font-size:11px;color:#86868B;font-family:monospace;margin-bottom:12px;">${o.protocol} · ${fmtDateBR(o.date)}</div>
+        <div class="card" style="padding:12px 14px;margin-bottom:14px;">
+            ${o.items.map(it=>`<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;"><span style="color:#3A3A3C;">${it.name} × ${it.qty}${it.discountPct?' <span style=\"color:#16A34A;\">(-'+(it.discountPct*100).toFixed(0)+'%)</span>':''}</span><span style="font-weight:600;color:#1D1D1F;">${fmtMoney(it.price*it.qty*(1-(it.discountPct||0)))}</span></div>`).join('')}
+            <div style="border-top:1px solid #F5F5F7;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;"><span style="font-size:14px;font-weight:700;">Total</span><span style="font-size:15px;font-weight:800;color:#15803D;">${fmtMoney(o.total)}</span></div>
+        </div>
+        ${o.notes?`<div style="font-size:12px;color:#6E6E73;font-style:italic;margin-bottom:14px;">"${o.notes}"</div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${o.status!=='confirmado'?`<button onclick="openEditPedido('${o.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#2563EB;border-color:#BFDBFE;"><i class="fas fa-pen"></i> Editar pedido</button>`:''}
+            ${o.status==='aberto'?`<button onclick="advancePedidoStatus('${o.id}','enviado')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;"><i class="fas fa-paper-plane"></i> Marcar como enviado</button>`:''}
+            ${o.status==='enviado'?`<button onclick="advancePedidoStatus('${o.id}','confirmado')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#16A34A;border-color:#BBF7D0;"><i class="fas fa-check"></i> Marcar como confirmado</button>`:''}
+            ${hasRefer?`<button onclick="generateAmendExcel('${o.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#16A34A;border-color:#BBF7D0;"><i class="fas fa-file-excel"></i> Gerar planilha Amend</button>`:''}
+            <button onclick="deletePedido('${o.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#DC2626;border-color:#FECACA;"><i class="fas fa-trash"></i> Excluir pedido</button>
+        </div>
+    `;
+    document.getElementById('modal-pedido-detail').classList.add('show');
+}
+function closePedidoDetail() { document.getElementById('modal-pedido-detail').classList.remove('show'); }
+
+// ======================
+// EDITAR PEDIDO (não confirmados) — desconto por item e total
+// ======================
+let editingOrderId = null;
+let editingItems = [];
+
+function openEditPedido(orderId) {
+    const o = S.orders().find(x=>x.id===orderId);
+    if (!o) return;
+    if (o.status==='confirmado') return toast('Pedidos confirmados não podem ser editados');
+    editingOrderId = orderId;
+    editingItems = o.items.map(it=>({...it}));
+    closePedidoDetail();
+    const info = orderClientInfo(o);
+    document.getElementById('edit-pd-client').textContent = info.nomeFantasia+' · '+o.protocol;
+    document.getElementById('edit-pd-discount').value = ((o.discountPct||0)*100);
+    renderEditPedidoItems();
+    document.getElementById('modal-edit-pedido').classList.add('show');
+}
+function closeEditPedido() { document.getElementById('modal-edit-pedido').classList.remove('show'); }
+
+function renderEditPedidoItems() {
+    const box = document.getElementById('edit-pd-items');
+    if (!editingItems.length) { box.innerHTML = `<p style="font-size:12px;color:#86868B;text-align:center;padding:14px 0;">Nenhum item — adicione ao menos um produto.</p>`; renderEditPedidoTotals(); return; }
+    box.innerHTML = editingItems.map((it,i)=>{
+        const lineTotal = it.price*it.qty*(1-(it.discountPct||0));
+        return `<div class="card" style="padding:10px 12px;display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.name}</div>
+                <div style="font-size:11px;color:#86868B;">${fmtMoney(it.price)} · SKU ${it.sku||''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                <button onclick="editItemQty(${i},-1)" class="qbtn">−</button>
+                <span style="font-size:13px;font-weight:700;min-width:20px;text-align:center;">${it.qty}</span>
+                <button onclick="editItemQty(${i},1)" class="qbtn" style="background:#F0FDF4;border-color:#BBF7D0;">+</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;flex-shrink:0;">
+                <input type="number" min="0" max="100" step="1" value="${(it.discountPct||0)*100||''}" placeholder="0" title="Desconto do item (%)" onchange="editItemDiscount(${i},this.value)" style="width:46px;padding:5px 4px;border:1.5px solid #E5E5EA;border-radius:6px;font-size:11px;text-align:center;font-family:'Inter',sans-serif;">
+                <span style="font-size:10px;color:#86868B;">%</span>
+            </div>
+            <span style="font-size:13px;font-weight:700;color:#1D1D1F;min-width:64px;text-align:right;flex-shrink:0;">${fmtMoney(lineTotal)}</span>
+            <button onclick="removeEditItem(${i})" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:13px;flex-shrink:0;"><i class="fas fa-trash"></i></button>
+        </div>`;
+    }).join('');
+    renderEditPedidoTotals();
+}
+
+function editItemQty(i, delta) {
+    editingItems[i].qty = Math.max(1, editingItems[i].qty+delta);
+    renderEditPedidoItems();
+}
+function editItemDiscount(i, val) {
+    const pct = Math.min(100, Math.max(0, parseFloat(val)||0));
+    editingItems[i].discountPct = pct/100;
+    renderEditPedidoItems();
+}
+function removeEditItem(i) {
+    editingItems.splice(i,1);
+    renderEditPedidoItems();
+}
+
+function editPedidoSubtotal() {
+    return editingItems.reduce((s,it)=>s+it.price*it.qty*(1-(it.discountPct||0)),0);
+}
+
+function renderEditPedidoTotals() {
+    const sub = editPedidoSubtotal();
+    const discPct = (parseFloat(document.getElementById('edit-pd-discount')?.value)||0)/100;
+    const disc = sub*discPct;
+    document.getElementById('edit-pd-sub').textContent = fmtMoney(sub);
+    document.getElementById('edit-pd-disc').textContent = '− '+fmtMoney(disc);
+    document.getElementById('edit-pd-total').textContent = fmtMoney(sub-disc);
+}
+
+function saveEditedPedido() {
+    if (!editingItems.length) return toast('O pedido precisa de ao menos um item');
+    const sub = editPedidoSubtotal();
+    const discPct = (parseFloat(document.getElementById('edit-pd-discount').value)||0)/100;
+    const discount = sub*discPct;
+    S.s('orders', S.orders().map(o=>o.id===editingOrderId ? {
+        ...o, items: editingItems, subtotal: sub, discountPct: discPct, discount, total: sub-discount,
+    } : o));
+    closeEditPedido();
+    toast('Pedido atualizado!');
+    loadPedidos();
+}
+
+function advancePedidoStatus(orderId, status) {
+    S.s('orders', S.orders().map(o=>o.id===orderId?{...o,status}:o));
+    toast('Pedido atualizado para "'+ORDER_STATUS_LABEL[status]+'"');
+    closePedidoDetail();
+    loadPedidos();
+}
+
+// ======================
+// GERAÇÃO DE PLANILHA AMEND (SN / LR-LP)
+// ======================
+function codIntOf(p) { return parseInt(String(p.sku||'').replace(/\D/g,''),10) || p.sku; }
+
+// Estilos extraídos célula a célula dos arquivos originais da Amend (aux_files),
+// com cores de tema resolvidas para hex (Accent1 4472C4, Darker 50% = 203864,
+// Lighter 80% = DAE3F3). Sem macros — apenas formatação nativa do .xlsx via ExcelJS.
+const AMEND_CURRENCY_FMT = '_-"R$"\\ * #,##0.00_-;\\-"R$"\\ * #,##0.00_-;_-"R$"\\ * "-"??_-;_-@_-';
+const AMEND_HEADER_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FF203864'} };
+const AMEND_BAND_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FFDAE3F3'} };
+const AMEND_HEADER_FONT = { name:'Arial', size:11, bold:true, color:{argb:'FFFFFFFF'} };
+const AMEND_LABEL_FONT = { name:'Arial', size:11, bold:true, color:{argb:'FF000000'} };
+const AMEND_ITEM_FONT = { name:'Arial', size:9, color:{argb:'FF000000'} };
+const AMEND_ITEM_FONT_BOLD = { name:'Arial', size:9, bold:true, color:{argb:'FF000000'} };
+const AMEND_HAIR = {style:'hair'}, AMEND_THIN = {style:'thin'}, AMEND_MEDIUM = {style:'medium'}, AMEND_THICK = {style:'thick'}, AMEND_DASHED = {style:'dashed'}, AMEND_DOTTED = {style:'dotted'};
+const AMEND_HAIR_BORDER = { top:AMEND_HAIR, bottom:AMEND_HAIR, left:AMEND_HAIR, right:AMEND_HAIR };
+const AMEND_HEADER_BORDER = { top:AMEND_MEDIUM, bottom:AMEND_THICK, left:AMEND_DASHED, right:AMEND_DASHED };
+const AMEND_LABEL_BORDER = { top:AMEND_THIN, bottom:AMEND_THIN, left:AMEND_DOTTED };
+
+async function generateAmendExcel(orderId) {
+    const order = S.orders().find(o=>o.id===orderId);
+    if (!order) return;
+    if (typeof ExcelJS === 'undefined') return toast('Biblioteca de planilhas não carregou — verifique sua conexão');
+
+    const info = orderClientInfo(order);
+    const isSN = info.taxRegime==='Simples Nacional' || info.taxRegime==='MEI';
+    const year = new Date().getFullYear();
+    const today = fmtDateBR(new Date().toISOString());
+    const prazo = PAYMENTS.find(p=>p.value===order.paymentMethod)?.label || order.paymentMethod;
+    const desconto = ((order.discountPct||0)*100).toFixed(1)+'%';
+    const vendedor = memberDisplayName(order.ownerId || currentMemberId() || '');
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(isSN?'PERF (SN)':'PERF (LR-LP)');
+    ws.columns = [{width:2.57},{width:10.14},{width:25},{width:10.29},{width:15.29},{width:68.71},{width:10.14},{width:9.14},{width:12.71}];
+
+    // Coluna A é sempre uma margem vazia, igual ao arquivo original — colunas de
+    // dados começam em B. Usamos getCell por letra para seguir essa convenção.
+    function cell(ref) { return ws.getCell(ref); }
+    function setLabel(ref, text, mergeTo) {
+        if (mergeTo) ws.mergeCells(ref+':'+mergeTo);
+        const c = cell(ref);
+        c.value = text; c.font = AMEND_LABEL_FONT; c.alignment = {horizontal:'left'}; c.border = AMEND_LABEL_BORDER;
+    }
+    function setHeaderCell(ref, text, col) {
+        const c = cell(ref);
+        c.value = text; c.font = AMEND_HEADER_FONT; c.fill = AMEND_HEADER_FILL;
+        c.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+        c.border = { top:AMEND_MEDIUM, bottom:AMEND_THICK, left: col==='B'?AMEND_MEDIUM:AMEND_DASHED, right: col==='I'?AMEND_MEDIUM:undefined };
+    }
+
+    ws.mergeCells('B1:I1');
+    cell('B1').value = 'TABELA AMEND '+(isSN?'SN':'LR/LP')+' - '+year;
+    cell('B1').font = { name:'Snap ITC', size:28, color:{argb:'FF003399'} };
+    cell('B1').alignment = {horizontal:'center', vertical:'middle'};
+
+    ws.mergeCells('B2:I2');
+    cell('B2').value = '(Atualizado em '+today+')';
+    cell('B2').font = { name:'Showcard Gothic', size:12, color:{argb:'FF000000'} };
+    cell('B2').alignment = {horizontal:'center', vertical:'middle'};
+
+    setLabel('B4', 'RAZÃO SOCIAL: '+(info.razaoSocial||info.nomeFantasia||''), 'C4');
+    setLabel('B5', 'CNPJ: '+(info.cnpj||''), 'C5');
+    setLabel('G5', 'TEL: '+(info.phone||''), 'H5');
+    setLabel('B6', 'EMAIL: '+(info.email||''), 'C6');
+    setLabel('F6', 'PRAZO DE PAGAMENTO: '+prazo);
+    setLabel('G6', 'DESCONTO: '+desconto);
+    setLabel('B7', 'VENDEDOR: '+vendedor, 'C7');
+
+    const headerCols = ['B','C','D','E','F','G','H','I'];
+    ['Cód. Int.','LINHA','Cód. Fáb.','EAN','Descrição','Preço (R$)','Qtd. (UN)','TOTAL'].forEach((txt,i)=>setHeaderCell(headerCols[i]+'9', txt, headerCols[i]));
+
+    const byCat = {};
+    const catOrder = [];
+    order.items.forEach(it=>{
+        const p = prod(it.productId) || {};
+        const cat = p.categoria || 'Outros';
+        if (!byCat[cat]) { byCat[cat]=[]; catOrder.push(cat); }
+        byCat[cat].push({ ...it, p, ean: p.ean, codFab: p.codFab, linha: p.linha });
+    });
+
+    let r = 10;
+    const CATEGORY_BAND_FONT = { name:'Snap ITC', size:24, bold:true, color:{argb:'FFFFFFFF'} };
+    catOrder.forEach(cat=>{
+        headerCols.forEach(col=>{
+            const c = cell(col+r);
+            c.fill = AMEND_HEADER_FILL;
+            c.font = CATEGORY_BAND_FONT;
+            c.alignment = {vertical:'middle'};
+            c.border = { top:AMEND_THICK, bottom:AMEND_THICK, left: col==='B'?AMEND_MEDIUM:undefined, right: col==='I'?AMEND_MEDIUM:undefined };
+        });
+        cell('B'+r).value = cat.toUpperCase();
+        r++;
+
+        ['Cód. Int.','Categoria','Cód. Fáb.','EAN','Descrição','Preço (R$)','Qtd. (UN)','TOTAL'].forEach((txt,i)=>setHeaderCell(headerCols[i]+r, txt, headerCols[i]));
+        r++;
+
+        byCat[cat].forEach(it=>{
+            const lineTotal = it.price*it.qty*(1-(it.discountPct||0));
+            const vals = { B:codIntOf(it.p||{sku:it.sku}), C:it.linha||'', D:it.codFab||'', E:it.ean||'', F:it.name, G:Number(it.price.toFixed(2)), H:it.qty, I:Number(lineTotal.toFixed(2)) };
+            headerCols.forEach(col=>{
+                const c = cell(col+r);
+                c.value = vals[col];
+                c.font = (col==='C'||col==='F') ? AMEND_ITEM_FONT_BOLD : AMEND_ITEM_FONT;
+                c.border = { ...AMEND_HAIR_BORDER, left: col==='B'?AMEND_MEDIUM:AMEND_HAIR, right: col==='I'?AMEND_MEDIUM:AMEND_HAIR };
+                c.alignment = (col==='F') ? {horizontal:'left', vertical:'middle', wrapText:true} : {horizontal:'center', vertical:'middle'};
+                if (col==='H' || col==='I') c.fill = AMEND_BAND_FILL;
+                if (col==='G' || col==='I') { c.numFmt = AMEND_CURRENCY_FMT; c.alignment = {horizontal:'left', vertical:'middle'}; }
+            });
+            r++;
+        });
+    });
+
+    r++;
+    function totalRow(label, value, bold) {
+        const lc = cell('H'+r), vc = cell('I'+r);
+        lc.value = label; lc.font = { name:'Arial', size:10, bold:true };
+        lc.alignment = {horizontal:'right'};
+        vc.value = Number(value.toFixed(2)); vc.numFmt = AMEND_CURRENCY_FMT;
+        vc.font = { name:'Arial', size:10, bold: !!bold };
+        r++;
+    }
+    totalRow('SUBTOTAL', order.subtotal);
+    if (order.discount>0) totalRow('DESCONTO ('+((order.discountPct||0)*100).toFixed(1)+'%)', -order.discount);
+    totalRow('TOTAL', order.total, true);
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Pedido-'+order.protocol+'-Amend.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Planilha Amend gerada!');
+}
+
+// ======================
+// COMPARTILHAR FORMULÁRIO PÚBLICO (vinculado a um cliente da carteira)
+// ======================
+function openShareFormLink(preselectClientId) {
+    const clients = visibleClients();
+    document.getElementById('share-client-select').innerHTML = clients.length===0
+        ? `<option value="">Nenhum cliente na carteira</option>`
+        : clients.map(c=>`<option value="${c.id}" ${preselectClientId===c.id?'selected':''}>${c.nomeFantasia} — ${c.cnpj}</option>`).join('');
+    document.getElementById('modal-share-form').classList.add('show');
+    onShareClientChange();
+}
+function closeShareFormLink() { document.getElementById('modal-share-form').classList.remove('show'); }
+
+function openAddClientForShare() {
+    shareFlowPending = true;
+    closeShareFormLink();
+    openAddClient();
+}
+
+function onShareClientChange() {
+    const sel = document.getElementById('share-client-select');
+    const box = document.getElementById('share-link-box');
+    const clientId = sel.value;
+    if (!clientId) { box.style.display = 'none'; return; }
+    const u = S.session();
+    // Token único por link gerado — garante que o formulário só possa ser enviado uma vez.
+    const token = Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+    const url = location.origin + location.pathname + '?forms=1'
+        + (u ? ('&rep='+encodeURIComponent(u.email)) : '')
+        + '&client='+encodeURIComponent(clientId)
+        + '&token='+token;
+    document.getElementById('share-form-link').value = url;
+    box.style.display = 'block';
+}
+function copyShareFormLink() {
+    const input = document.getElementById('share-form-link');
+    input.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(()=>toast('Link copiado!')).catch(()=>toast('Selecione e copie com Ctrl+C'));
+    } else {
+        document.execCommand('copy');
+        toast('Link copiado!');
+    }
+}
+
+// ======================
+// FORMULÁRIO PÚBLICO DE PEDIDOS (sem login, sem identificar empresa)
+// O link já carrega o e-mail do representante (?rep=) — o pedido cai direto na conta dele.
+// ======================
+let formsRepUser = null;
+let formsClient = null;
+let formsToken = null;
+
+function formsInitFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const repEmail = (params.get('rep')||'').trim().toLowerCase();
+    formsRepUser = repEmail ? S.users().find(u=>u.email.toLowerCase()===repEmail && u.accountType==='representante') : null;
+    const clientId = parseInt(params.get('client'));
+    formsClient = clientId ? S.clients().find(c=>c.id===clientId) : null;
+    formsToken = params.get('token') || null;
+}
+
+function formsEnterScreen() {
+    const tokenAlreadyUsed = formsToken && S.usedFormTokens().includes(formsToken);
+    const valid = !!formsRepUser && !!formsClient && !tokenAlreadyUsed;
+    document.getElementById('forms-invalid').style.display = valid ? 'none' : 'flex';
+    document.getElementById('forms-body').style.display = valid ? 'block' : 'none';
+    document.getElementById('forms-stepper').style.display = valid ? 'flex' : 'none';
+    if (!valid) {
+        document.getElementById('forms-step-sub').textContent = 'Link inválido';
+        const invalidBox = document.getElementById('forms-invalid');
+        if (tokenAlreadyUsed) {
+            invalidBox.innerHTML = `<div>
+                <i class="fas fa-circle-check" style="font-size:36px;color:#16A34A;display:block;margin-bottom:14px;"></i>
+                <h3 style="font-size:18px;font-weight:800;color:#1D1D1F;margin:0 0 8px;">Este pedido já foi enviado</h3>
+                <p style="font-size:14px;color:#6E6E73;line-height:1.6;margin:0;">Este link já foi utilizado uma vez e não pode ser preenchido novamente. Peça um novo link ao seu representante caso queira fazer outro pedido.</p>
+            </div>`;
+        }
+        return;
+    }
+    document.getElementById('forms-rep-name').textContent = formsRepUser.name;
+    document.getElementById('forms-client-name').textContent = formsClient.nomeFantasia;
+    document.getElementById('forms-client-sub').textContent = formsClient.name+' · '+formsClient.cnpj+' · '+formsClient.taxRegime;
+    formsGoStep(1);
+    renderFormsProds();
+    updateFormsCart();
+}
+
+function formsBack() { showScreen('login'); }
+
+function formsGoStep(n) {
+    document.getElementById('forms-step-1').style.display = n===1?'block':'none';
+    document.getElementById('forms-step-2').style.display = n===2?'block':'none';
+    document.getElementById('forms-bar1').classList.toggle('done', n>=1);
+    document.getElementById('forms-bar2').classList.toggle('done', n>=2);
+    const subs = {1:'Escolha os produtos', 2:'Revise e envie'};
+    document.getElementById('forms-step-sub').textContent = subs[n];
+    window.scrollTo(0,0);
+}
+
+function renderFormsProds() {
+    const q = (document.getElementById('forms-prod-search')?.value||'').toLowerCase();
+    const referProds = PRODS.filter(p=>p.ind==='refer');
+    const cats = [...new Set(referProds.map(p=>p.categoria))];
+    document.getElementById('forms-prod-cats').innerHTML = ['Todas',...cats].map(cat=>{
+        const val = cat==='Todas' ? '' : cat;
+        return `<button class="chip ${formsProdCatFilter===val?'active':''}" onclick="setFormsProdCat('${val}')">${cat}</button>`;
+    }).join('');
+
+    const f = referProds.filter(p=>(!formsProdCatFilter||p.categoria===formsProdCatFilter) && (!q||p.name.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q)));
+
+    document.getElementById('forms-prod-list').innerHTML = f.map(p=>{
+        const price = effPrice(p, formsClient.taxRegime);
+        const qty = formsCart[p.id]||0;
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F5F5F7;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:600;color:#1D1D1F;">${p.name}</div>
+                <div style="font-size:11px;color:#86868B;">SKU ${p.sku} · ${p.unit}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <span style="font-size:14px;font-weight:700;color:#16A34A;">${fmtMoney(price)}</span>
+                ${qty===0
+                    ? `<button onclick="formsAddCart(${p.id})" style="width:30px;height:30px;background:#16A34A;color:white;border:none;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;line-height:1;">+</button>`
+                    : `<div style="display:flex;align-items:center;gap:5px;">
+                        <button onclick="formsRmCart(${p.id})" class="qbtn">−</button>
+                        <span style="font-size:15px;font-weight:800;color:#1D1D1F;min-width:22px;text-align:center;">${qty}</span>
+                        <button onclick="formsAddCart(${p.id})" class="qbtn" style="background:#F0FDF4;border-color:#BBF7D0;">+</button>
+                    </div>`
+                }
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function setFormsProdCat(cat) { formsProdCatFilter = cat; renderFormsProds(); }
+function formsAddCart(id) { formsCart[id]=(formsCart[id]||0)+1; renderFormsProds(); updateFormsCart(); }
+function formsRmCart(id) { if (formsCart[id]>0) formsCart[id]--; if (formsCart[id]===0) delete formsCart[id]; renderFormsProds(); updateFormsCart(); }
+
+function formsCartTotal() {
+    return Object.entries(formsCart).reduce((s,[id,qty])=>s+effPrice(prod(parseInt(id)),formsClient.taxRegime)*qty,0);
+}
+
+function updateFormsCart() {
+    const el = document.getElementById('forms-cart-sub');
+    if (el) el.textContent = fmtMoney(formsCartTotal());
+}
+
+function formsGoStep2() {
+    if (!Object.keys(formsCart).length) return toast('Selecione ao menos um produto');
+    document.getElementById('forms-review-items').innerHTML = Object.entries(formsCart).map(([id,qty])=>{
+        const p = prod(parseInt(id));
+        const t = effPrice(p,formsClient.taxRegime)*qty;
+        return `<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:#3A3A3C;">${p.name} × ${qty}</span><span style="font-size:13px;font-weight:600;color:#1D1D1F;">${fmtMoney(t)}</span></div>`;
+    }).join('');
+    document.getElementById('forms-review-total').textContent = fmtMoney(formsCartTotal());
+    formsGoStep(2);
+}
+function formsBackStep1() { formsGoStep(1); }
+
+function submitFormsOrder() {
+    if (!formsRepUser || !formsClient) return toast('Link inválido — peça o link correto ao seu representante');
+    if (!Object.keys(formsCart).length) return toast('Selecione ao menos um produto');
+
+    const items = Object.entries(formsCart).map(([id,qty])=>{
+        const p = prod(parseInt(id));
+        return { productId:p.id, name:p.name, sku:p.sku, qty, price: effPrice(p, formsClient.taxRegime), discountPct:0 };
+    });
+    let notes = document.getElementById('forms-notes').value.trim();
+    const phone = document.getElementById('forms-phone').value.trim();
+    if (phone && phone !== formsClient.phone) notes = 'Telefone de contato: '+phone+(notes?' — '+notes:'');
+    notes = notes || null;
+
+    const o = buildOrder(formsClient.id, 'refer', 'boleto', items, 0, 0, 'aberto', {
+        notes, source:'forms', ownerId: formsRepUser.memberId,
+    });
+    S.addOrder(o);
+    if (formsToken) S.markFormTokenUsed(formsToken);
+    showScreen('forms-ok');
+}
+
 // Clicar fora da caixa de qualquer modal fecha o modal.
 document.querySelectorAll('.modal-overlay').forEach(ov => {
     ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('show'); });
@@ -2311,4 +3330,10 @@ seed();
 applyTheme();
 PRODS.push(...S.customProducts());
 const u=S.session();
-showScreen(u ? homeScreenFor(u) : 'landing');
+const urlParams = new URLSearchParams(location.search);
+if (urlParams.get('forms')) {
+    formsInitFromUrl();
+    showScreen('forms');
+} else {
+    showScreen(u ? homeScreenFor(u) : 'landing');
+}
