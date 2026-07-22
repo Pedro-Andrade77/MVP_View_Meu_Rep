@@ -48,7 +48,7 @@
         </div>
         <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('financeiro')"><i class="fas fa-sack-dollar" style="color:#16A34A;"></i><span>Financeiro</span></button>
         <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('equipe')"><i class="fas fa-people-group" style="color:#16A34A;"></i><span>Equipe</span></button>
-        <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('rota')"><i class="fas fa-route" style="color:#16A34A;"></i><span>Rota</span></button>
+        <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('tarefas')"><i class="fas fa-list-check" style="color:#16A34A;"></i><span>Tarefas & Visitas</span></button>
         <button class="sidebar-item nav-rep" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('anotacoes')"><i class="fas fa-note-sticky" style="color:#16A34A;"></i><span>Anotações</span></button>
         <button class="sidebar-item" style="font-size:15px;padding:14px;" onclick="closeMoreMenu();showScreen('config')"><i class="fas fa-gear" style="color:#16A34A;"></i><span>Configurações</span></button>
         <div style="border-top:1px solid #F5F5F7;margin:6px 0;"></div>
@@ -636,7 +636,7 @@
             <div style="margin-bottom:20px;">
                 <div class="slabel" style="display:flex;justify-content:space-between;align-items:center;">
                     <span>Próximas visitas</span>
-                    <button onclick="showScreen('rota')" style="font-size:11px;font-weight:600;color:#16A34A;background:none;border:none;cursor:pointer;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">Ver rota →</button>
+                    <button onclick="showScreen('tarefas')" style="font-size:11px;font-weight:600;color:#16A34A;background:none;border:none;cursor:pointer;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">Ver agenda →</button>
                 </div>
                 <div id="dash-vlist" style="display:flex;flex-direction:column;gap:10px;"></div>
             </div>
@@ -1093,9 +1093,15 @@
         <div class="slabel">Forma de pagamento</div>
         <div id="pay-opts" class="grid grid-cols-2 lg:grid-cols-3" style="gap:8px;margin-bottom:16px;"></div>
 
+        <!-- Itens com desconto individual editável -->
+        <div class="card" style="padding:14px;margin-bottom:16px;">
+            <div style="font-size:12px;font-weight:700;color:#86868B;margin-bottom:10px;letter-spacing:.04em;">ITENS DO PEDIDO</div>
+            <div id="ped-step2-items" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+
         <div class="card" style="padding:16px;margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <span style="font-size:13px;font-weight:600;color:#1D1D1F;">Desconto global (%)</span>
+                <span style="font-size:13px;font-weight:600;color:#1D1D1F;">Desconto adicional global (%)</span>
                 <input class="inp" id="ped-discount" type="number" min="0" max="100" step="0.5" value="0" style="width:90px;text-align:center;padding:8px;" oninput="updateCart()">
             </div>
             <div id="mi" class="mi mi-g"><div style="display:flex;align-items:center;gap:10px;"><i id="mi-icon" class="fas fa-circle-check" style="font-size:18px;"></i><div><div id="mi-text" style="font-weight:700;font-size:13px;"></div><div id="mi-sub" style="font-size:12px;opacity:0.75;margin-top:2px;"></div></div></div></div>
@@ -1107,9 +1113,11 @@
         </div>
 
         <div class="card" style="padding:16px;margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:#6E6E73;">Subtotal</span><span id="p-sub2" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#6E6E73;">Desconto</span><span id="p-disc" style="font-size:13px;font-weight:600;color:#059669;"></span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="font-size:15px;font-weight:700;color:#1D1D1F;">Total</span><span id="p-total" style="font-size:19px;font-weight:800;color:#1D1D1F;"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:13px;color:#86868B;">Bruto</span><span id="p-gross" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span></div>
+            <div id="p-item-disc-row" style="display:none;justify-content:space-between;margin-bottom:5px;"><span style="font-size:13px;color:#86868B;">Desc. por item</span><span id="p-item-disc" style="font-size:13px;font-weight:600;color:#059669;"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="font-size:13px;color:#86868B;">Subtotal</span><span id="p-sub2" style="font-size:13px;font-weight:600;color:#1D1D1F;"></span></div>
+            <div id="p-global-disc-row" style="display:none;justify-content:space-between;margin-bottom:8px;"><span style="font-size:13px;color:#86868B;">Desc. global</span><span id="p-disc" style="font-size:13px;font-weight:600;color:#059669;"></span></div>
+            <div style="border-top:1px solid #F5F5F7;padding-top:10px;margin-top:4px;display:flex;justify-content:space-between;"><span style="font-size:15px;font-weight:700;color:#1D1D1F;">Total</span><span id="p-total" style="font-size:19px;font-weight:800;color:#1D1D1F;"></span></div>
         </div>
 
         <div style="display:flex;gap:10px;">
@@ -1144,17 +1152,18 @@
     </div>
 </div>
 
-<!-- ========== TAREFAS ========== -->
+<!-- ========== TAREFAS & VISITAS ========== -->
 <div class="screen" id="screen-tarefas">
     <div class="ph">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div>
-                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Tarefas</h2>
+                <h2 style="font-size:20px;font-weight:700;color:#1D1D1F;margin:0;">Tarefas & Visitas</h2>
                 <div id="tf-subtitle" style="font-size:12px;color:#86868B;margin-top:1px;"></div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+                <button onclick="openNewVisit()" id="tf-new-visit-btn" style="display:none;font-size:11px;font-weight:700;color:#1D4ED8;background:#DBEAFE;border:1px solid #93C5FD;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;"><i class="fas fa-location-dot"></i> Nova visita</button>
                 <button onclick="toggleTfView()" id="tf-view-btn" style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;"></button>
-                <button onclick="openNewTask()" style="width:36px;height:36px;background:#16A34A;border-radius:10px;border:none;cursor:pointer;color:white;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-plus"></i></button>
+                <button onclick="openNewTask()" style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;"><i class="fas fa-list-check"></i> Nova tarefa</button>
             </div>
         </div>
         <div id="tf-team-selector" style="display:none;gap:6px;overflow-x:auto;padding-bottom:4px;"></div>
@@ -1168,18 +1177,23 @@
     </div>
     <div class="sb">
         <div id="tf-calendar" class="card" style="padding:16px;margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <button onclick="tfCalMove(-1)" class="qbtn" style="width:32px;height:32px;">‹</button>
                 <span id="tf-cal-label" style="font-size:14px;font-weight:700;color:#1D1D1F;text-transform:capitalize;"></span>
                 <button onclick="tfCalMove(1)" class="qbtn" style="width:32px;height:32px;">›</button>
             </div>
+            <div id="tf-cal-legend" style="margin-bottom:10px;"></div>
             <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
                 <div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">D</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">S</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">T</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">Q</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">Q</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">S</div><div style="text-align:center;font-size:10px;font-weight:700;color:#86868B;">S</div>
             </div>
             <div id="tf-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
         </div>
         <div class="slabel" id="tf-cal-day-label"></div>
-        <div id="tf-cal-day-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="tf-cal-day-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+        <div id="tf-upcoming-wrap" style="display:none;">
+            <div class="slabel" style="margin-bottom:8px;display:flex;align-items:center;gap:6px;"><i class="fas fa-arrow-trend-up" style="color:#F59E0B;font-size:11px;"></i>Próximas não concluídas</div>
+            <div id="tf-upcoming-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
         <div id="tf-list" style="display:none;flex-direction:column;gap:8px;"></div>
     </div>
 </div>
@@ -1201,6 +1215,16 @@
             <div id="nt-assignee-wrap" style="display:none;"><label class="lbl">Atribuir para</label><select class="inp" id="nt-assignee"></select></div>
             <div><label class="lbl">Cliente vinculado</label><select class="inp" id="nt-client"><option value="">Sem cliente vinculado</option></select></div>
             <div><label class="lbl">Observações</label><textarea class="inp" id="nt-notes" rows="2" style="resize:none;"></textarea></div>
+            <div id="nt-share-wrap" style="background:#F5F5F7;border-radius:12px;padding:12px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <input type="checkbox" id="nt-share-check" onchange="toggleNtShare()" style="width:16px;height:16px;accent-color:#16A34A;">
+                    <label for="nt-share-check" style="font-size:13px;font-weight:600;color:#1D1D1F;cursor:pointer;">Compartilhar com a equipe</label>
+                </div>
+                <div id="nt-share-targets" style="display:none;display:none;">
+                    <div style="font-size:11px;color:#86868B;font-weight:600;margin-bottom:6px;">COMPARTILHAR COM</div>
+                    <div id="nt-share-members" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                </div>
+            </div>
             <button id="modal-newtask-submit" class="btn-p" onclick="submitNewTask()"><i class="fas fa-check"></i>Criar tarefa</button>
         </div>
     </div>
@@ -1381,6 +1405,7 @@
                 <div style="font-size:12px;color:#86868B;margin-top:1px;">Painel de inteligência de negócio das suas equipes</div>
             </div>
             <button id="equipe-trash-btn" onclick="openEquipeTrash()" style="display:none;width:36px;height:36px;background:#F5F5F7;border:1.5px solid #E5E5EA;border-radius:10px;cursor:pointer;color:#6E6E73;font-size:12px;font-weight:700;align-items:center;justify-content:center;gap:3px;padding:0 6px;position:relative;flex-shrink:0;" title="Lixeira de equipes (24h)"><i class="fas fa-trash"></i><span id="equipe-trash-count" style="position:absolute;top:-5px;right:-5px;background:#DC2626;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;"></span></button>
+            <button id="equipe-gear-btn" onclick="openEquipeSettings()" style="display:none;width:36px;height:36px;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;cursor:pointer;color:#16A34A;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Configurações da equipe"><i class="fas fa-gear"></i></button>
         </div>
         <div id="equipe-tabs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;"></div>
     </div>
@@ -1395,26 +1420,44 @@
         </div>
 
         <div id="equipe-content" style="display:none;">
-            <div id="equipe-team-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px;"></div>
-
-            <div id="equipe-totals" class="grid grid-cols-2 lg:grid-cols-4" style="gap:10px;margin-bottom:20px;"></div>
-
-            <div class="kpi" style="margin-bottom:16px;">
-                <div class="slabel" style="margin-bottom:8px;">Faturamento por membro (mês)</div>
-                <div id="equipe-bi-bars" style="display:flex;flex-direction:column;gap:12px;"></div>
+            <!-- Navegação por seção -->
+            <div id="equipe-section-nav" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:16px;border-bottom:1px solid #F5F5F7;scrollbar-width:none;">
+                <button class="chip active" id="esn-geral"     onclick="switchEquipeSection('geral')">Visão geral</button>
+                <button class="chip"        id="esn-pedidos"   onclick="switchEquipeSection('pedidos')"><i class="fas fa-file-invoice-dollar"></i> Pedidos</button>
+                <button class="chip"        id="esn-visitas"   onclick="switchEquipeSection('visitas')"><i class="fas fa-location-dot"></i> Visitas</button>
+                <button class="chip"        id="esn-leads"     onclick="switchEquipeSection('leads')"><i class="fas fa-bolt"></i> Leads</button>
+                <button class="chip"        id="esn-clientes"  onclick="switchEquipeSection('clientes')"><i class="fas fa-store"></i> Clientes</button>
             </div>
 
-            <div class="slabel">Ranking de metas do mês</div>
-            <div id="equipe-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
-
-            <div id="equipe-invites" style="margin-bottom:16px;"></div>
-
-            <div class="kpi" style="margin-bottom:16px;">
-                <div class="slabel" style="margin-bottom:8px;">Atividade recente da equipe (visitas)</div>
-                <div id="equipe-activity" style="display:flex;flex-direction:column;gap:4px;"></div>
+            <!-- SEÇÃO: Geral (dashboard existente) -->
+            <div id="equipe-section-geral">
+                <div id="equipe-team-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px;"></div>
+                <div id="equipe-totals" class="grid grid-cols-2 lg:grid-cols-4" style="gap:10px;margin-bottom:20px;"></div>
+                <div class="kpi" style="margin-bottom:16px;">
+                    <div class="slabel" style="margin-bottom:8px;">Faturamento por membro (mês)</div>
+                    <div id="equipe-bi-bars" style="display:flex;flex-direction:column;gap:12px;"></div>
+                </div>
+                <div class="slabel">Ranking de metas do mês</div>
+                <div id="equipe-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;"></div>
+                <div id="equipe-invites" style="margin-bottom:16px;"></div>
+                <div class="kpi" style="margin-bottom:16px;">
+                    <div class="slabel" style="margin-bottom:8px;">Atividade recente da equipe (visitas)</div>
+                    <div id="equipe-activity" style="display:flex;flex-direction:column;gap:4px;"></div>
+                </div>
+                <div id="equipe-perms"></div>
             </div>
 
-            <div id="equipe-perms"></div>
+            <!-- SEÇÃO: Pedidos do time -->
+            <div id="equipe-section-pedidos" style="display:none;"></div>
+
+            <!-- SEÇÃO: Visitas do time -->
+            <div id="equipe-section-visitas" style="display:none;"></div>
+
+            <!-- SEÇÃO: Leads do time -->
+            <div id="equipe-section-leads" style="display:none;"></div>
+
+            <!-- SEÇÃO: Clientes do time -->
+            <div id="equipe-section-clientes" style="display:none;"></div>
         </div>
     </div>
 </div>
@@ -1449,6 +1492,70 @@
     </div>
 </div>
 
+<!-- ========== CONFIGURAÇÕES DA EQUIPE MODAL ========== -->
+<div class="modal-overlay" id="modal-equipe-settings">
+    <div class="modal-box" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;position:sticky;top:0;background:white;padding-bottom:12px;border-bottom:1px solid #F5F5F7;z-index:1;">
+            <div>
+                <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;"><i class="fas fa-gear" style="color:#16A34A;margin-right:8px;"></i>Configurações da equipe</h3>
+                <div id="eq-settings-team-name" style="font-size:11px;color:#86868B;margin-top:2px;"></div>
+            </div>
+            <button onclick="closeEquipeSettings()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;flex-shrink:0;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="padding-top:14px;">
+            <!-- Tabs -->
+            <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid #F5F5F7;padding-bottom:10px;overflow-x:auto;">
+                <button id="eq-tab-perms"   onclick="switchEquipeTab('perms')"   class="chip active" style="font-size:12px;white-space:nowrap;"><i class="fas fa-lock"></i> Permissões</button>
+                <button id="eq-tab-goals"   onclick="switchEquipeTab('goals')"   class="chip"        style="font-size:12px;white-space:nowrap;"><i class="fas fa-bullseye"></i> Metas individuais</button>
+                <button id="eq-tab-sharing" onclick="switchEquipeTab('sharing')" class="chip"        style="font-size:12px;white-space:nowrap;"><i class="fas fa-share-nodes"></i> Meu acesso</button>
+            </div>
+            <div id="eq-settings-perms"></div>
+            <div id="eq-settings-goals"   style="display:none;"></div>
+            <div id="eq-settings-sharing" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== NOVA VISITA MODAL ========== -->
+<div class="modal-overlay" id="modal-newvisit">
+    <div class="modal-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;background:#DBEAFE;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-location-dot" style="color:#2563EB;font-size:16px;"></i>
+                </div>
+                <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;">Nova visita</h3>
+            </div>
+            <button onclick="closeNewVisit()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label class="lbl">Data da visita</label><input class="inp" id="nv-date" type="date"></div>
+            <div id="nv-assignee-wrap" style="display:none;"><label class="lbl">Realizada por</label><select class="inp" id="nv-assignee"></select></div>
+            <div><label class="lbl">Cliente</label><select class="inp" id="nv-client"><option value="">Sem cliente vinculado</option></select></div>
+            <div><label class="lbl">Observações</label><textarea class="inp" id="nv-notes" rows="2" style="resize:none;" placeholder="Ex: Apresentar nova linha de produtos"></textarea></div>
+            <div>
+                <label class="lbl">Status</label>
+                <div class="grid grid-cols-3" style="gap:8px;" id="nv-status-opts">
+                    <button type="button" class="pay-opt active" data-status="agendada" onclick="this.parentElement.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">Agendada</button>
+                    <button type="button" class="pay-opt" data-status="realizada" onclick="this.parentElement.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">Realizada</button>
+                    <button type="button" class="pay-opt" data-status="cancelada" onclick="this.parentElement.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">Cancelada</button>
+                </div>
+            </div>
+            <div id="nv-share-wrap" style="display:none;background:#EFF6FF;border-radius:12px;padding:12px;border:1px solid #DBEAFE;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <input type="checkbox" id="nv-share-check" onchange="toggleNvShare()" style="width:16px;height:16px;accent-color:#2563EB;">
+                    <label for="nv-share-check" style="font-size:13px;font-weight:600;color:#1D1D1F;cursor:pointer;">Compartilhar com a equipe</label>
+                </div>
+                <div id="nv-share-targets" style="display:none;">
+                    <div style="font-size:11px;color:#86868B;font-weight:600;margin-bottom:6px;">COMPARTILHAR COM</div>
+                    <div id="nv-share-members" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                </div>
+            </div>
+            <button class="btn-p" onclick="submitNewVisit()" style="background:#2563EB;"><i class="fas fa-check"></i>Salvar visita</button>
+        </div>
+    </div>
+</div>
+
 <!-- ========== ENTRAR EM EQUIPE MODAL ========== -->
 <div class="modal-overlay" id="modal-join-team">
     <div class="modal-box">
@@ -1457,6 +1564,41 @@
             <button onclick="closeJoinTeamModal()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
         </div>
         <div id="jt-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+</div>
+
+<!-- ========== PERMISSÕES AO ENTRAR EM EQUIPE ========== -->
+<div class="modal-overlay" id="modal-join-perms">
+    <div class="modal-box" style="max-width:440px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <h3 style="font-size:17px;font-weight:700;color:#1D1D1F;margin:0;"><i class="fas fa-shield-halved" style="color:#16A34A;margin-right:8px;"></i>Privacidade da equipe</h3>
+            <button onclick="closeJoinPerms()" style="width:32px;height:32px;background:#F5F5F7;border-radius:50%;border:none;cursor:pointer;color:#3A3A3C;"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div id="jp-team-info" style="font-size:12px;color:#86868B;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #F5F5F7;"></div>
+        <p style="font-size:13px;color:#3A3A3C;margin:0 0 14px;line-height:1.6;">Defina o que o <strong>administrador da equipe</strong> poderá visualizar dos seus registros. Você pode alterar isso a qualquer momento nas configurações.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+            <label style="display:flex;align-items:center;gap:12px;padding:12px;background:#F5F5F7;border-radius:12px;cursor:pointer;">
+                <input type="checkbox" id="jp-pedidos" style="width:17px;height:17px;accent-color:#16A34A;">
+                <div><div style="font-size:13px;font-weight:600;color:#1D1D1F;"><i class="fas fa-file-invoice-dollar" style="color:#16A34A;margin-right:6px;"></i>Meus pedidos</div><div style="font-size:11px;color:#86868B;">Admin vê seus pedidos e valores</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:12px;padding:12px;background:#F5F5F7;border-radius:12px;cursor:pointer;">
+                <input type="checkbox" id="jp-visitas" style="width:17px;height:17px;accent-color:#16A34A;">
+                <div><div style="font-size:13px;font-weight:600;color:#1D1D1F;"><i class="fas fa-location-dot" style="color:#16A34A;margin-right:6px;"></i>Minhas visitas</div><div style="font-size:11px;color:#86868B;">Admin vê suas visitas agendadas e realizadas</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:12px;padding:12px;background:#F5F5F7;border-radius:12px;cursor:pointer;">
+                <input type="checkbox" id="jp-leads" style="width:17px;height:17px;accent-color:#16A34A;">
+                <div><div style="font-size:13px;font-weight:600;color:#1D1D1F;"><i class="fas fa-bolt" style="color:#16A34A;margin-right:6px;"></i>Meus leads</div><div style="font-size:11px;color:#86868B;">Admin vê seus leads e funil de conversão</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:12px;padding:12px;background:#F5F5F7;border-radius:12px;cursor:pointer;">
+                <input type="checkbox" id="jp-clientes" style="width:17px;height:17px;accent-color:#16A34A;">
+                <div><div style="font-size:13px;font-weight:600;color:#1D1D1F;"><i class="fas fa-store" style="color:#16A34A;margin-right:6px;"></i>Minha carteira</div><div style="font-size:11px;color:#86868B;">Admin vê seus clientes e carteira</div></div>
+            </label>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button class="btn-s" style="flex:1;" onclick="confirmJoinTeam(false)">Entrar sem compartilhar</button>
+            <button class="btn-p" style="flex:1;" onclick="confirmJoinTeam(true)"><i class="fas fa-check"></i>Confirmar e entrar</button>
+        </div>
+        <input type="hidden" id="jp-team-id">
     </div>
 </div>
 
@@ -1673,8 +1815,7 @@
             <button class="sidebar-item" id="sb-pedidos" onclick="showScreen('pedidos')"><i class="fas fa-receipt"></i><span>Pedidos</span></button>
             <button class="sidebar-item" id="sb-cw" onclick="showScreen('carteira')"><i class="fas fa-users"></i><span>Carteira</span></button>
             <button class="sidebar-item" id="sb-leads" onclick="showScreen('leads')"><i class="fas fa-bullseye"></i><span>Leads</span></button>
-            <button class="sidebar-item" id="sb-tf" onclick="showScreen('tarefas')"><i class="fas fa-list-check"></i><span>Tarefas</span></button>
-            <button class="sidebar-item" id="sb-rt" onclick="showScreen('rota')"><i class="fas fa-route"></i><span>Rota</span></button>
+            <button class="sidebar-item" id="sb-tf" onclick="showScreen('tarefas')"><i class="fas fa-list-check"></i><span>Tarefas & Visitas</span></button>
             <button class="sidebar-item" id="sb-fin" onclick="showScreen('financeiro')"><i class="fas fa-sack-dollar"></i><span>Financeiro</span></button>
             <button class="sidebar-item" id="sb-equipe" onclick="showScreen('equipe')"><i class="fas fa-people-group"></i><span>Equipe</span></button>
             <button class="sidebar-item" id="sb-notes" onclick="showScreen('anotacoes')"><i class="fas fa-note-sticky"></i><span>Anotações</span></button>
@@ -1700,8 +1841,7 @@
     <button class="bnav-item nav-rep" id="bn-pedidos" onclick="showScreen('pedidos')"><i class="fas fa-receipt"></i><span>Pedidos</span></button>
     <button class="bnav-item nav-rep" id="bn-cw" onclick="showScreen('carteira')"><i class="fas fa-users"></i><span>Carteira</span></button>
     <button class="bnav-item nav-rep" id="bn-leads" onclick="showScreen('leads')"><i class="fas fa-bullseye"></i><span>Leads</span></button>
-    <button class="bnav-item nav-rep" id="bn-tf" onclick="showScreen('tarefas')"><i class="fas fa-list-check"></i><span>Tarefas</span></button>
-    <button class="bnav-item nav-rep" id="bn-rt" onclick="showScreen('rota')"><i class="fas fa-route"></i><span>Rota</span></button>
+    <button class="bnav-item nav-rep" id="bn-tf" onclick="showScreen('tarefas')"><i class="fas fa-list-check"></i><span>Agenda</span></button>
     <button class="bnav-item nav-rep" id="bn-fin" onclick="showScreen('financeiro')"><i class="fas fa-sack-dollar"></i><span>Financeiro</span></button>
     <button class="bnav-item nav-rep" id="bn-equipe" onclick="showScreen('equipe')"><i class="fas fa-people-group"></i><span>Equipe</span></button>
     <button class="bnav-item nav-rep" id="bn-notes" onclick="showScreen('anotacoes')"><i class="fas fa-note-sticky"></i><span>Notas</span></button>

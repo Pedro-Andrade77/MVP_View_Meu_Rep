@@ -18,6 +18,7 @@ const S = {
     tasks: () => S.g('tasks')||[],
     setTasks: a => S.s('tasks',a),
     visits: () => S.g('visits')||[],
+    setVisits: a => S.s('visits',a),
     addVisit: v => { const a=S.visits(); a.push(v); S.s('visits',a); },
     goals: () => S.g('goals')||{revenueTarget:28000,visitsTarget:80},
     setGoals: g => S.s('goals',g),
@@ -44,6 +45,13 @@ const S = {
     // ---- Permissões por equipe: { [teamId]: { [viewerId]: { tarefas:[...], clientes:[...], visitas:[...] } } } ----
     teamPerms: () => S.g('teamPerms')||{},
     setTeamPerms: p => S.s('teamPerms',p),
+    // ---- Metas individuais por equipe: { [memberId]: { revenueTarget, visitsTarget } } ----
+    memberGoals: teamId => S.g('memberGoals_'+teamId)||{},
+    setMemberGoals: (teamId, g) => S.s('memberGoals_'+teamId, g),
+    memberGrants: teamId => S.g('memberGrants_'+teamId)||{},
+    setMemberGrants: (teamId, g) => S.s('memberGrants_'+teamId, g),
+    calColors: () => S.g('calColors')||{visitText:'#1D4ED8',visitBg:'#DBEAFE',taskText:'#15803D',taskBg:'#DCFCE7'},
+    setCalColors: c => S.s('calColors',c),
     // ---- Chat de suporte por usuário ----
     supportChat: uid => S.g('supportChat_'+uid)||[],
     setSupportChat: (uid,msgs) => S.s('supportChat_'+uid,msgs),
@@ -61,6 +69,9 @@ const S = {
 let currentClient = null;
 let fromClient = false;
 let cwFilter = 'all';
+let cwScope = 'team';
+let pdScope = 'team';
+let leadsScope = 'team';
 let tfFilter = 'all';
 let cart = {};
 let cartDiscounts = {};

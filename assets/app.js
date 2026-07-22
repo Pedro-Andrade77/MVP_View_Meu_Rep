@@ -7,7 +7,6 @@ const NAV_IDS = {
     carteira:  ['bn-cw','sb-cw'],
     leads:     ['bn-leads','sb-leads'],
     tarefas:   ['bn-tf','sb-tf'],
-    rota:      ['bn-rt','sb-rt'],
     config:    ['bn-cfg','sb-cfg','bn-sup-cfg'],
     financeiro:['bn-fin','sb-fin'],
     equipe:    ['bn-equipe','sb-equipe'],
@@ -375,6 +374,30 @@ function renderDashGoals() {
 // ======================
 // CARTEIRA
 // ======================
+function setCwScope(scope, el) {
+    cwScope = scope;
+    const wrap = document.getElementById('cw-scope-wrap');
+    if (wrap) wrap.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    if (el) el.classList.add('active');
+    loadCW();
+}
+
+function setPdScope(scope, el) {
+    pdScope = scope;
+    const wrap = document.getElementById('pd-scope-wrap');
+    if (wrap) wrap.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    if (el) el.classList.add('active');
+    loadPedidos();
+}
+
+function setLeadsScope(scope, el) {
+    leadsScope = scope;
+    const wrap = document.getElementById('leads-scope-wrap');
+    if (wrap) wrap.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    if (el) el.classList.add('active');
+    loadLeads();
+}
+
 function loadCW() {
     const clients = visibleClients();
     document.getElementById('cw-subtitle').textContent = clients.length + ' clientes na carteira';
@@ -1009,20 +1032,57 @@ function updateCart() {
 
     const pSub = document.getElementById('p-sub'); if (pSub) pSub.textContent = fmtMoney(sub);
 
+    // Gross subtotal (before item discounts)
+    const grossSub = items.reduce((s,[id,qty])=>{ const p=prod(parseInt(id)); return s+effPrice(p,c.taxRegime)*qty; }, 0);
+    const itemDiscAmt = grossSub - sub;
+
+    // Step 2 items list
+    const step2Items = document.getElementById('ped-step2-items');
+    if (step2Items) {
+        step2Items.innerHTML = items.map(([id,qty])=>{
+            const p=prod(parseInt(id));
+            const price=effPrice(p,c.taxRegime);
+            const itemDisc=cartDiscounts[id]||0;
+            const lineTotal=price*qty*(1-itemDisc/100);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F5F5F7;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+                    <div style="font-size:11px;color:#86868B;">${qty}× ${fmtMoney(price)}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                    <input type="number" min="0" max="100" step="1" value="${itemDisc||''}" placeholder="0" title="Desconto (%)" onchange="setItemDiscount(${id},this.value)" style="width:48px;padding:5px 4px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:12px;text-align:center;font-family:'Inter',sans-serif;">
+                    <span style="font-size:11px;color:#86868B;">%</span>
+                    <span style="font-size:13px;font-weight:700;color:${itemDisc>0?'#15803D':'#1D1D1F'};min-width:68px;text-align:right;">${fmtMoney(lineTotal)}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
     const discPct = (parseFloat(document.getElementById('ped-discount')?.value)||0)/100;
     const disc = sub*discPct;
     const total = sub-disc;
 
-    const pSub2 = document.getElementById('p-sub2'); if (pSub2) pSub2.textContent = fmtMoney(sub);
-    const pDisc = document.getElementById('p-disc'); if (pDisc) pDisc.textContent = '− '+fmtMoney(disc);
-    const pTotal = document.getElementById('p-total'); if (pTotal) pTotal.textContent = fmtMoney(total);
+    const el = (id) => document.getElementById(id);
+    if (el('p-gross'))    el('p-gross').textContent    = fmtMoney(grossSub);
+    const itemDiscRow = el('p-item-disc-row');
+    if (itemDiscRow)  { itemDiscRow.style.display = itemDiscAmt>0 ? 'flex' : 'none'; }
+    if (el('p-item-disc')) el('p-item-disc').textContent = '− '+fmtMoney(itemDiscAmt);
+    if (el('p-sub2'))   el('p-sub2').textContent    = fmtMoney(sub);
+    const globalDiscRow = el('p-global-disc-row');
+    if (globalDiscRow) { globalDiscRow.style.display = disc>0 ? 'flex' : 'none'; }
+    if (el('p-disc'))   el('p-disc').textContent    = '− '+fmtMoney(disc);
+    if (el('p-total'))  el('p-total').textContent   = fmtMoney(total);
 
     const mi=document.getElementById('mi');
     if (mi) {
-        const icon=document.getElementById('mi-icon'), txt=document.getElementById('mi-text'), sub2=document.getElementById('mi-sub');
-        if(total>500){ mi.className='mi mi-g'; icon.className='fas fa-circle-check'; txt.textContent='Margem excelente ✓'; sub2.textContent='Desconto dentro da política comercial'; }
-        else if(total>150){ mi.className='mi mi-y'; icon.className='fas fa-triangle-exclamation'; txt.textContent='Margem aceitável ⚠'; sub2.textContent='Adicione mais itens para melhorar a margem'; }
-        else { mi.className='mi mi-r'; icon.className='fas fa-circle-xmark'; txt.textContent='Abaixo do mínimo recomendado'; sub2.textContent='Valor mínimo recomendado: R$ 150,00'; }
+        const teamMin = myTeams().reduce((v,t)=>t.minOrder>0?Math.max(v,t.minOrder):v, 0);
+        if (!teamMin) { mi.style.display='none'; }
+        else {
+            mi.style.display='';
+            const icon=document.getElementById('mi-icon'), txt=document.getElementById('mi-text'), sub2=document.getElementById('mi-sub');
+            if(total>=teamMin){ mi.className='mi mi-g'; icon.className='fas fa-circle-check'; txt.textContent='Acima do pedido mínimo ✓'; sub2.textContent=`Mínimo da equipe: ${fmtMoney(teamMin)}`; }
+            else { mi.className='mi mi-r'; icon.className='fas fa-circle-xmark'; txt.textContent='Abaixo do pedido mínimo'; sub2.textContent=`Mínimo da equipe: ${fmtMoney(teamMin)}`; }
+        }
     }
 }
 
@@ -1246,22 +1306,15 @@ function setTfTeam(teamId) {
 
 function tfVisibleTasks() {
     const mid = currentMemberId();
-    if (!mid) return S.tasks(); // contas sem equipe (ex.: fornecedor) não filtram
-    if (!tfActiveTeamId) return S.tasks().filter(t=>(t.ownerId||mid)===mid);
+    if (!mid) return S.tasks();
+    if (!tfActiveTeamId) return S.tasks().filter(t=>(t.ownerId||mid)===mid || (t.sharedWith||[]).includes(mid));
     if (!tfVisibleMembers) tfVisibleMembers = allowedMemberIdsForTeam(tfActiveTeamId, 'tarefas');
-    return S.tasks().filter(t=>tfVisibleMembers.includes(t.ownerId||mid));
+    return S.tasks().filter(t=>tfVisibleMembers.includes(t.ownerId||mid) || (t.sharedWith||[]).includes(mid));
 }
 
 function renderTfMemberChips() {
     const box = document.getElementById('tf-member-chips');
-    if (!box) return;
-    const mid = currentMemberId();
-    const allowed = (mid && tfActiveTeamId) ? allowedMemberIdsForTeam(tfActiveTeamId, 'tarefas') : [];
-    if (!mid || allowed.length<=1) { box.style.display='none'; box.innerHTML=''; return; }
-    if (!tfVisibleMembers) tfVisibleMembers = [...allowed];
-    box.style.display='flex';
-    box.innerHTML = `<span style="font-size:11px;font-weight:700;color:#86868B;align-self:center;margin-right:2px;">Ver agenda de:</span>` +
-        allowed.map(id=>`<button class="member-chip ${tfVisibleMembers.includes(id)?'active':''}" onclick="toggleTfMember('${id}')"><span class="member-dot" style="background:${memberColor(id)};"></span>${memberDisplayName(id)}${id===mid?' (você)':''}</button>`).join('');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
 }
 
 function toggleTfMember(id) {
@@ -1272,12 +1325,59 @@ function toggleTfMember(id) {
     renderTfView();
 }
 
+function hexToRgba(hex, alpha) {
+    const h = hex.replace('#','');
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function applyCalColors() {
+    const c = S.calColors();
+    const root = document.documentElement;
+    root.style.setProperty('--cal-visit-bg',   c.visitBg   || '#DBEAFE');
+    root.style.setProperty('--cal-visit-text',  c.visitText || '#1D4ED8');
+    root.style.setProperty('--cal-task-bg',     c.taskBg    || '#DCFCE7');
+    root.style.setProperty('--cal-task-text',   c.taskText  || '#15803D');
+}
+
+function updateCalColor(type, color) {
+    const c = S.calColors();
+    if (type === 'visit') { c.visitText = color; c.visitBg = hexToRgba(color, 0.15); }
+    else                  { c.taskText  = color; c.taskBg  = hexToRgba(color, 0.15); }
+    S.setCalColors(c);
+    applyCalColors();
+    const legend = document.getElementById('tf-cal-legend');
+    if (legend) renderTfCalLegend();
+}
+
+function renderTfCalLegend() {
+    const leg = document.getElementById('tf-cal-legend');
+    if (!leg) return;
+    const c = S.calColors();
+    leg.innerHTML = `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#3A3A3C;" title="Editar cor das visitas">
+            <span style="display:inline-block;width:28px;height:14px;border-radius:4px;background:var(--cal-visit-bg);border:1.5px solid var(--cal-visit-text);"></span>
+            <span style="color:var(--cal-visit-text);">Visitas</span>
+            <input type="color" value="${c.visitText||'#1D4ED8'}" oninput="updateCalColor('visit',this.value)" style="width:18px;height:18px;border:none;border-radius:3px;cursor:pointer;padding:0;opacity:.7;">
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#3A3A3C;" title="Editar cor das tarefas">
+            <span style="display:inline-block;width:28px;height:14px;border-radius:4px;background:var(--cal-task-bg);border:1.5px solid var(--cal-task-text);"></span>
+            <span style="color:var(--cal-task-text);">Tarefas</span>
+            <input type="color" value="${c.taskText||'#15803D'}" oninput="updateCalColor('task',this.value)" style="width:18px;height:18px;border:none;border-radius:3px;cursor:pointer;padding:0;opacity:.7;">
+        </label>
+    </div>`;
+}
+
 function loadTarefas() {
+    applyCalColors();
     renderTfTeamSelector();
     const tasks = tfVisibleTasks();
     const pendCount = tasks.filter(t=>t.status==='pendente'||t.status==='remarcada').length;
     document.getElementById('tf-subtitle').textContent = pendCount+' pendente'+(pendCount!==1?'s':'');
-    renderTfMemberChips();
+    const mid = currentMemberId();
+    const isAdmin = myTeams().some(tm=>tm.adminId===mid);
+    const visitBtn = document.getElementById('tf-new-visit-btn');
+    if (visitBtn) visitBtn.style.display = isAdmin ? 'inline-flex' : 'none';
     renderTfView();
 }
 
@@ -1309,7 +1409,15 @@ function tfTaskDateKey(t) {
     return (t.status==='remarcada' && t.rescheduledTo) ? t.rescheduledTo : t.dueDate;
 }
 
+function tfVisibleVisits() {
+    const mid = currentMemberId();
+    if (!mid) return S.visits();
+    const allowed = (mid && tfActiveTeamId) ? allowedMemberIdsForTeam(tfActiveTeamId, 'visitas') : allowedMemberIds('visitas');
+    return S.visits().filter(v=>allowed.includes(v.ownerId)||(v.sharedWith||[]).includes(mid));
+}
+
 function renderTfCalendar() {
+    renderTfCalLegend();
     const year = tfCalDate.getFullYear(), month = tfCalDate.getMonth();
     document.getElementById('tf-cal-label').textContent = tfCalDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
     const mid = currentMemberId();
@@ -1317,7 +1425,10 @@ function renderTfCalendar() {
     const byDate = {};
     tfVisibleTasks().forEach(t=>{
         const key = tfTaskDateKey(t);
-        (byDate[key] = byDate[key]||[]).push(t);
+        (byDate[key] = byDate[key]||[]).push({kind:'task', t});
+    });
+    tfVisibleVisits().forEach(v=>{
+        (byDate[v.date] = byDate[v.date]||[]).push({kind:'visit', v});
     });
 
     const firstDow = new Date(year, month, 1).getDay();
@@ -1326,22 +1437,32 @@ function renderTfCalendar() {
     for (let i=0;i<firstDow;i++) cells.push(null);
     for (let dd=1; dd<=daysInMonth; dd++) cells.push(`${year}-${String(month+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`);
 
+    const cmap = new Map(S.clients().map(c=>[c.id,c]));
     document.getElementById('tf-cal-grid').innerHTML = cells.map(dateKey=>{
         if (!dateKey) return `<div></div>`;
-        const dayTasks = (byDate[dateKey]||[]).slice().sort((a,b)=>(a.dueDate).localeCompare(b.dueDate));
+        const dayItems = (byDate[dateKey]||[]);
         const isToday = dateKey===todayStr();
         const isSelected = dateKey===tfSelectedDay;
         const dayNum = parseInt(dateKey.slice(-2));
-        const visible = dayTasks.slice(0,2);
-        const overflow = dayTasks.length - visible.length;
+        const visible = dayItems.slice(0,3);
+        const overflow = dayItems.length - visible.length;
         return `<button onclick="tfSelectDay('${dateKey}')" class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}">
             <span class="cal-daynum">${dayNum}</span>
-            ${visible.map(t=>{
+            ${visible.map(item=>{
+                if (item.kind==='visit') {
+                    const ownerId = item.v.ownerId||mid;
+                    const done = item.v.status==='cancelada';
+                    const cls = done ? 'cal-evt-done' : 'cal-evt-visit';
+                    const label = cmap.get(item.v.clientId)?.nomeFantasia||'Visita';
+                    return `<span class="cal-evt ${cls}">${memberAvatarInline(ownerId)}<i class="fas fa-location-dot" style="font-size:7px;flex-shrink:0;"></i>${label}</span>`;
+                }
+                const t = item.t;
                 const done = t.status==='concluida'||t.status==='cancelada';
                 const ownerId = t.ownerId||mid;
-                return `<span class="cal-evt" style="background:${done?'#C7C7CC':memberColor(ownerId)};${done?'text-decoration:line-through;':''}">${t.title}</span>`;
+                const cls = done ? 'cal-evt-done' : 'cal-evt-task';
+                return `<span class="cal-evt ${cls}">${memberAvatarInline(ownerId)}${t.title}</span>`;
             }).join('')}
-            ${overflow>0?`<span class="cal-evt-more">+${overflow}</span>`:''}
+            ${overflow>0?`<span class="cal-evt-more">+${overflow} mais</span>`:''}
         </button>`;
     }).join('');
 
@@ -1356,12 +1477,105 @@ function tfSelectDay(dateKey) {
 function tfRenderDayList() {
     document.getElementById('tf-cal-day-label').textContent = fmtDateBR(tfSelectedDay+'T00:00:00') + (tfSelectedDay===todayStr()?' · Hoje':'');
     const tasks = tfVisibleTasks().filter(t=>tfTaskDateKey(t)===tfSelectedDay);
+    const visits = tfVisibleVisits().filter(v=>v.date===tfSelectedDay);
     const list = document.getElementById('tf-cal-day-list');
-    const clients = S.clients();
-    const cmap = new Map(clients.map(c=>[c.id,c]));
-    list.innerHTML = tasks.length===0
-        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:16px 0;">Nenhuma tarefa neste dia.</p>`
-        : tasks.map(t=>tfTaskCardHtml(t,cmap)).join('');
+    const cmap = new Map(S.clients().map(c=>[c.id,c]));
+    const mid = currentMemberId();
+    const isAdmin = myTeams().some(tm=>tm.adminId===mid);
+    let html = '';
+    if (visits.length) {
+        html += visits.map(v=>{
+            const client = cmap.get(v.clientId);
+            const ownerId = v.ownerId||mid;
+            const showOwner = mid && ownerId!==mid;
+            const done = v.status==='cancelada' || v.status==='realizada';
+            const editable = isAdmin || ownerId===mid;
+            return `<div class="card" style="padding:12px 14px;border-left:3px solid #2563EB;${done?'opacity:.65;':''}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                    <div style="display:flex;gap:10px;flex:1;min-width:0;">
+                        ${memberAvatarBig(ownerId, 36)}
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">
+                                <i class="fas fa-location-dot" style="color:#2563EB;font-size:12px;"></i>
+                                <span style="font-size:14px;font-weight:600;color:#1D1D1F;">${client?client.nomeFantasia:'Visita'}</span>
+                                ${showOwner?`<span class="badge" style="background:#EFF6FF;color:#1D4ED8;">${memberDisplayName(ownerId)}</span>`:''}
+                            </div>
+                            <div style="font-size:12px;color:#86868B;">${fmtDateBR(v.date+'T00:00:00')}</div>
+                            ${v.notes?`<div style="font-size:11px;color:#86868B;margin-top:3px;font-style:italic;">${v.notes}</div>`:''}
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                        <select class="status-sel" onchange="changeVisitStatus('${v.id}',this.value)" ${editable?'':'disabled'} style="font-size:11px;">
+                            <option value="agendada" ${v.status==='agendada'?'selected':''}>Agendada</option>
+                            <option value="realizada" ${v.status==='realizada'?'selected':''}>Realizada</option>
+                            <option value="cancelada" ${v.status==='cancelada'?'selected':''}>Cancelada</option>
+                        </select>
+                        ${editable?`<div style="display:flex;gap:8px;">
+                            <button onclick="deleteVisit('${v.id}')" style="background:none;border:none;cursor:pointer;color:#86868B;font-size:13px;padding:2px 4px;" title="Excluir visita"><i class="fas fa-trash"></i></button>
+                        </div>`:''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    html += tasks.map(t=>tfTaskCardHtml(t,cmap)).join('');
+    if (!html) html = `<p style="font-size:13px;color:#86868B;text-align:center;padding:16px 0;">Nenhum item neste dia.</p>`;
+    list.innerHTML = html;
+    renderTfUpcoming(cmap);
+}
+
+function renderTfUpcoming(cmap) {
+    const wrap = document.getElementById('tf-upcoming-wrap');
+    const list = document.getElementById('tf-upcoming-list');
+    if (!wrap || !list) return;
+    if (!cmap) cmap = new Map(S.clients().map(c=>[c.id,c]));
+    const today = todayStr();
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+30);
+    const cutoffStr = cutoff.toISOString().slice(0,10);
+    const upcoming = [];
+    tfVisibleTasks().filter(t=>{
+        const d = tfTaskDateKey(t);
+        return d > today && d <= cutoffStr && (t.status==='pendente'||t.status==='remarcada');
+    }).forEach(t=>upcoming.push({kind:'task',date:tfTaskDateKey(t),t}));
+    tfVisibleVisits().filter(v=>v.date>today && v.date<=cutoffStr && v.status==='agendada')
+        .forEach(v=>upcoming.push({kind:'visit',date:v.date,v}));
+    upcoming.sort((a,b)=>a.date.localeCompare(b.date));
+    if (!upcoming.length) { wrap.style.display='none'; return; }
+    wrap.style.display = 'block';
+    list.innerHTML = upcoming.slice(0,10).map(item=>{
+        if (item.kind==='visit') {
+            const v = item.v;
+            const client = cmap.get(v.clientId);
+            const ownerId = v.ownerId||currentMemberId();
+            return `<div class="card" style="padding:10px 12px;border-left:3px solid #2563EB;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    ${memberAvatarBig(ownerId,30)}
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <i class="fas fa-location-dot" style="color:#2563EB;font-size:11px;"></i>
+                            <span style="font-size:13px;font-weight:600;color:#1D1D1F;">${client?client.nomeFantasia:'Visita'}</span>
+                        </div>
+                        <div style="font-size:11px;color:#86868B;">${fmtDateBR(v.date+'T00:00:00')}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+        const t = item.t;
+        const client = t.clientId ? cmap.get(t.clientId) : null;
+        const ownerId = t.ownerId||currentMemberId();
+        return `<div class="card" style="padding:10px 12px;border-left:3px solid #16A34A;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                ${memberAvatarBig(ownerId,30)}
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:13px;font-weight:600;color:#1D1D1F;">${t.title}</span>
+                        <span class="badge" style="background:#DCFCE7;color:#15803D;font-size:10px;">${TASK_TYPE_LABEL[t.type]}</span>
+                    </div>
+                    <div style="font-size:11px;color:#86868B;">${fmtDateBR(t.dueDate)}${client?' · '+client.nomeFantasia:''}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function tfTaskCardHtml(t, cmap) {
@@ -1374,13 +1588,14 @@ function tfTaskCardHtml(t, cmap) {
     const ownerId = t.ownerId || mid;
     const showOwner = mid && ownerId !== mid;
     const editable = canManageTask(t);
-    return `<div class="card" style="padding:12px 14px;background:${bg};border-color:${border};${isDone?'opacity:.65;':''}">
+    return `<div class="card" style="padding:12px 14px;background:${bg};border-color:${border};border-left:3px solid ${isDone?'#C7C7CC':'#16A34A'};${isDone?'opacity:.65;':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-            <div style="flex:1;min-width:0;">
+            <div style="display:flex;gap:10px;flex:1;min-width:0;">
+                ${memberAvatarBig(ownerId, 36)}
+                <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">
-                    ${showOwner?`<span class="member-dot" style="background:${memberColor(ownerId)};"></span>`:''}
                     <span style="font-size:14px;font-weight:600;color:#1D1D1F;${isDone?'text-decoration:line-through;':''}">${t.title}</span>
-                    <span class="badge" style="background:#F5F5F7;color:#3A3A3C;"><i class="fas ${TASK_TYPE_ICON[t.type]}" style="font-size:9px;margin-right:3px;"></i>${TASK_TYPE_LABEL[t.type]}</span>
+                    <span class="badge" style="background:#DCFCE7;color:#15803D;"><i class="fas ${TASK_TYPE_ICON[t.type]}" style="font-size:9px;margin-right:3px;"></i>${TASK_TYPE_LABEL[t.type]}</span>
                     ${showOwner?`<span class="badge" style="background:#F5F5F7;color:#3A3A3C;">${memberDisplayName(ownerId)}</span>`:''}
                 </div>
                 <div style="font-size:12px;color:${overdue?'#DC2626':'#86868B'};">
@@ -1388,6 +1603,7 @@ function tfTaskCardHtml(t, cmap) {
                     ${client?' · '+client.nomeFantasia:''}
                 </div>
                 ${t.notes?`<div style="font-size:11px;color:#86868B;margin-top:4px;font-style:italic;">${t.notes}</div>`:''}
+                </div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                 <select class="status-sel" onchange="changeTaskStatus('${t.id}', this.value)" ${editable?'':'disabled'}>
@@ -1408,6 +1624,96 @@ function canManageTask(t) {
     const ownerId = t.ownerId || mid;
     if (ownerId === mid) return true;
     return myTeams().some(team=>team.adminId===mid && team.memberIds.includes(ownerId));
+}
+
+function changeVisitStatus(id, status) {
+    const visits = S.visits();
+    const v = visits.find(x=>x.id===id);
+    if (!v) return;
+    v.status = status;
+    S.setVisits(visits);
+    tfRenderDayList();
+}
+
+function deleteVisit(id) {
+    if (!confirm('Remover visita?')) return;
+    S.setVisits(S.visits().filter(v=>v.id!==id));
+    tfRenderDayList();
+    renderTfCalendar();
+}
+
+function openNewVisit() {
+    const m = document.getElementById('modal-newvisit');
+    if (!m) return;
+    const dateInput = document.getElementById('nv-date');
+    if (dateInput) dateInput.value = tfSelectedDay || todayStr();
+    const notesEl = document.getElementById('nv-notes');
+    if (notesEl) notesEl.value = '';
+    const clientSel = document.getElementById('nv-client');
+    if (clientSel) clientSel.innerHTML = '<option value="">— Selecionar cliente —</option>' +
+        S.clients().map(c=>`<option value="${c.id}">${c.nomeFantasia}</option>`).join('');
+    const mid = currentMemberId();
+    const isAdmin = myTeams().some(tm=>tm.adminId===mid);
+    const aWrap = document.getElementById('nv-assignee-wrap');
+    const aSel = document.getElementById('nv-assignee');
+    if (aWrap && aSel && isAdmin) {
+        const members = allowedMemberIds('visitas');
+        aSel.innerHTML = members.map(id=>`<option value="${id}" ${id===mid?'selected':''}>${memberDisplayName(id)}</option>`).join('');
+        aWrap.style.display = 'block';
+    } else if (aWrap) {
+        aWrap.style.display = 'none';
+    }
+    const statusOpts = document.querySelectorAll('#nv-status-opts .pay-opt');
+    statusOpts.forEach((b,i)=>b.classList.toggle('active',i===0));
+    const shareWrap = document.getElementById('nv-share-wrap');
+    if (shareWrap) shareWrap.style.display = myTeams().length ? 'block' : 'none';
+    const shareCheck = document.getElementById('nv-share-check');
+    if (shareCheck) shareCheck.checked = false;
+    const shareTargets = document.getElementById('nv-share-targets');
+    if (shareTargets) shareTargets.style.display = 'none';
+    m.style.display = 'flex';
+}
+
+function closeNewVisit() {
+    const m = document.getElementById('modal-newvisit');
+    if (m) m.style.display = 'none';
+}
+
+function toggleNvShare() {
+    const checked = document.getElementById('nv-share-check')?.checked;
+    const targets = document.getElementById('nv-share-targets');
+    if (targets) targets.style.display = checked ? 'block' : 'none';
+    if (checked) {
+        const mid = currentMemberId();
+        const members = allowedMemberIds('visitas').filter(id=>id!==mid);
+        const wrap = document.getElementById('nv-share-members');
+        if (wrap) wrap.innerHTML = members.length
+            ? members.map(id=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;"><input type="checkbox" name="nv-share-m" value="${id}" style="accent-color:#2563EB;"><span style="font-size:13px;">${memberDisplayName(id)}</span></label>`).join('')
+            : '<span style="font-size:12px;color:#86868B;">Nenhum integrante disponível.</span>';
+    }
+}
+
+function submitNewVisit() {
+    const date = (document.getElementById('nv-date')||{}).value;
+    const clientId = (document.getElementById('nv-client')||{}).value;
+    const notes = (document.getElementById('nv-notes')||{}).value?.trim()||'';
+    const statusBtn = document.querySelector('#nv-status-opts .pay-opt.active');
+    const status = statusBtn ? statusBtn.dataset.status : 'agendada';
+    if (!date) { toast('Selecione a data'); return; }
+    const mid = currentMemberId();
+    const assigneeWrap = document.getElementById('nv-assignee-wrap');
+    const assigneeSel = document.getElementById('nv-assignee');
+    const ownerId = (assigneeWrap && assigneeWrap.style.display!=='none' && assigneeSel && assigneeSel.value) ? assigneeSel.value : (mid||'u1');
+    const shareCheck = document.getElementById('nv-share-check');
+    const sharedWith = (shareCheck && shareCheck.checked)
+        ? [...document.querySelectorAll('input[name="nv-share-m"]:checked')].map(cb=>cb.value)
+        : [];
+    const v = { id:'visit-'+Date.now(), ownerId, clientId: clientId||null, date, notes, status, sharedWith, createdAt: new Date().toISOString() };
+    S.setVisits([...S.visits(), v]);
+    closeNewVisit();
+    renderTfCalendar();
+    if (tfSelectedDay===date) tfRenderDayList();
+    toast('Visita registrada!');
 }
 
 function setTfChip(f,el) {
@@ -1486,6 +1792,12 @@ function openNewTask() {
     const opts = document.getElementById('nt-type-opts');
     opts.innerHTML = Object.entries(TASK_TYPE_LABEL).map(([v,l],i)=>`<button type="button" class="pay-opt ${i===0?'active':''}" data-type="${v}" onclick="this.parentElement.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${l}</button>`).join('');
     renderAssigneeSelect(currentMemberId());
+    const shareCheck = document.getElementById('nt-share-check');
+    if (shareCheck) shareCheck.checked = false;
+    const shareTargets = document.getElementById('nt-share-targets');
+    if (shareTargets) shareTargets.style.display = 'none';
+    const shareWrap = document.getElementById('nt-share-wrap');
+    if (shareWrap) shareWrap.style.display = myTeams().length ? 'block' : 'none';
     document.getElementById('modal-newtask-title').textContent = 'Nova tarefa';
     document.getElementById('modal-newtask-submit').innerHTML = '<i class="fas fa-check"></i>Criar tarefa';
     document.getElementById('modal-newtask').classList.add('show');
@@ -1509,6 +1821,20 @@ function openEditTask(id) {
     document.getElementById('modal-newtask').classList.add('show');
 }
 
+function toggleNtShare() {
+    const checked = document.getElementById('nt-share-check').checked;
+    const targets = document.getElementById('nt-share-targets');
+    if (targets) targets.style.display = checked ? 'block' : 'none';
+    if (checked) {
+        const mid = currentMemberId();
+        const members = allowedMemberIds('tarefas').filter(id=>id!==mid);
+        const wrap = document.getElementById('nt-share-members');
+        if (wrap) wrap.innerHTML = members.length
+            ? members.map(id=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;"><input type="checkbox" name="nt-share-m" value="${id}" style="accent-color:#16A34A;"><span style="font-size:13px;">${memberDisplayName(id)}</span></label>`).join('')
+            : '<span style="font-size:12px;color:#86868B;">Nenhum integrante disponível.</span>';
+    }
+}
+
 function submitNewTask() {
     const title = document.getElementById('nt-title').value.trim();
     const date = document.getElementById('nt-date').value;
@@ -1519,19 +1845,25 @@ function submitNewTask() {
     const notes = document.getElementById('nt-notes').value.trim();
     const wrap = document.getElementById('nt-assignee-wrap');
     const assigneeSel = document.getElementById('nt-assignee');
-    const ownerId = (wrap.style.display!=='none' && assigneeSel.value) ? assigneeSel.value : currentMemberId();
+    const ownerId = (wrap && wrap.style.display!=='none' && assigneeSel && assigneeSel.value) ? assigneeSel.value : currentMemberId();
+
+    const shareCheck = document.getElementById('nt-share-check');
+    let sharedWith = [];
+    if (shareCheck && shareCheck.checked) {
+        sharedWith = [...document.querySelectorAll('input[name="nt-share-m"]:checked')].map(cb=>cb.value);
+    }
 
     if (editingTaskId) {
         const id = editingTaskId;
         editingTaskId = null;
         closeNewTask();
-        updateTask(id, { title, type, dueDate:date, clientId: clientId?parseInt(clientId):null, notes: notes||null, ownerId });
+        updateTask(id, { title, type, dueDate:date, clientId: clientId||null, notes: notes||null, ownerId });
         toast('Tarefa atualizada!');
         return;
     }
 
     const tasks = S.tasks();
-    tasks.push({ id:'t'+Date.now(), ownerId, clientId: clientId?parseInt(clientId):null, title, type, dueDate:date, status:'pendente', rescheduledTo:null, notes: notes||null });
+    tasks.push({ id:'t'+Date.now(), ownerId, clientId: clientId||null, title, type, dueDate:date, status:'pendente', rescheduledTo:null, notes: notes||null, sharedWith });
     S.setTasks(tasks);
     closeNewTask();
     toast('Tarefa criada!');
@@ -1767,6 +2099,7 @@ function loadFinanceiro() {
 // EQUIPE (times de representantes) — painel BI + gestão
 // ======================
 let equipeActiveTeamId = null;
+let equipeSection = 'geral';
 
 function currentMemberId() {
     const u = S.session();
@@ -1781,6 +2114,21 @@ function memberDisplayName(id) {
 
 function memberColor(id) { return TEAM_MEMBER_COLORS[id] || '#6E6E73'; }
 
+function memberAvatarInline(id) {
+    const name = memberDisplayName(id);
+    const initials = name.split(' ').filter(Boolean).map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const color = memberColor(id);
+    return `<span class="cal-avatar" style="background:${color};">${initials}</span>`;
+}
+
+function memberAvatarBig(id, size) {
+    size = size || 36;
+    const name = memberDisplayName(id);
+    const initials = name.split(' ').filter(Boolean).map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const color = memberColor(id);
+    return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.38)}px;font-weight:800;color:white;flex-shrink:0;">${initials}</div>`;
+}
+
 function memberStats(id) {
     if (id===currentMemberId()) {
         const goals = S.goals();
@@ -1794,7 +2142,10 @@ function memberStats(id) {
         };
     }
     const seed = TEAM_MEMBER_SEED[id] || {id, revenue:0, goalRevenue:1, visits:0, goalVisits:1, clients:0, pendingTasks:0};
-    return { ...seed, id, name: memberDisplayName(id) };
+    const mg = memberGoalForId ? memberGoalForId(id) : null;
+    return { ...seed, id, name: memberDisplayName(id),
+        goalRevenue: (mg && mg.revenueTarget) || seed.goalRevenue,
+        goalVisits: (mg && mg.visitsTarget) || seed.goalVisits };
 }
 
 const TEAM_TRASH_HOURS = 24;
@@ -1827,15 +2178,18 @@ function trashedTeams() {
 function loadEquipe() {
     purgeExpiredTeamTrash();
     const teams = myTeams();
+    const mid = currentMemberId();
     const noteam = document.getElementById('equipe-noteam');
     const content = document.getElementById('equipe-content');
     const trashBtn = document.getElementById('equipe-trash-btn');
+    const gearBtn = document.getElementById('equipe-gear-btn');
     const trashCount = trashedTeams().length;
     if (trashBtn) {
         trashBtn.style.display = trashCount ? 'flex' : 'none';
         const badge = document.getElementById('equipe-trash-count');
         if (badge) badge.textContent = trashCount;
     }
+    if (gearBtn) gearBtn.style.display = teams.length ? 'flex' : 'none';
     if (!teams.length) {
         noteam.style.display = 'block';
         content.style.display = 'none';
@@ -1846,7 +2200,7 @@ function loadEquipe() {
     content.style.display = 'block';
     if (!equipeActiveTeamId || !teams.find(t=>t.id===equipeActiveTeamId)) equipeActiveTeamId = teams[0].id;
     renderEquipeTabs();
-    renderEquipeDashboard();
+    switchEquipeSection(equipeSection);
 }
 
 function openEquipeTrash() {
@@ -1877,7 +2231,175 @@ function renderEquipeTabs() {
         `<button class="team-tab" onclick="openJoinTeamModal()" style="border-style:dashed;"><i class="fas fa-right-to-bracket"></i> Entrar em equipe</button>`;
 }
 
-function selectEquipeTeam(id) { equipeActiveTeamId = id; renderEquipeDashboard(); }
+function selectEquipeTeam(id) { equipeActiveTeamId = id; renderEquipeSection(); }
+
+function switchEquipeSection(sec) {
+    equipeSection = sec;
+    ['geral','pedidos','visitas','leads','clientes'].forEach(s=>{
+        const btn = document.getElementById('esn-'+s);
+        const div = document.getElementById('equipe-section-'+s);
+        if (btn) btn.classList.toggle('active', s===sec);
+        if (div) div.style.display = s===sec ? 'block' : 'none';
+    });
+    renderEquipeSection();
+}
+
+function renderEquipeSection() {
+    renderEquipeTabs();
+    if (equipeSection==='geral') { renderEquipeDashboard(); return; }
+    if (equipeSection==='pedidos') { renderEquipePedidos(); return; }
+    if (equipeSection==='visitas') { renderEquipeVisitas(); return; }
+    if (equipeSection==='leads')   { renderEquipeLeads();   return; }
+    if (equipeSection==='clientes'){ renderEquipeClientes(); return; }
+}
+
+function equipeVisibleItems(category, teamId) {
+    const mid = currentMemberId();
+    const team = S.teams().find(t=>t.id===teamId);
+    if (!team) return [];
+    const isAdmin = team.adminId === mid;
+    const allowedIds = new Set(allowedMemberIdsForTeam(teamId, category==='pedidos'||category==='leads'?'clientes':category));
+    if (isAdmin) {
+        const grants = S.memberGrants(teamId);
+        team.memberIds.forEach(id=>{ if (grants[id] && grants[id][category]) allowedIds.add(id); });
+    }
+    if (category==='pedidos')  return S.orders().filter(o=>!o.deletedAt&&(allowedIds.has(o.ownerId)||(o.sharedWith||[]).includes(mid)));
+    if (category==='clientes') return S.clients().filter(c=>allowedIds.has(c.ownerId)||(c.sharedWith||[]).includes(mid));
+    if (category==='leads')    return S.leads().filter(l=>allowedIds.has(l.ownerId||'u1')||(l.sharedWith||[]).includes(mid));
+    if (category==='visitas')  return S.visits().filter(v=>allowedIds.has(v.ownerId)||(v.sharedWith||[]).includes(mid));
+    return [];
+}
+
+function equipeGrantsInfo(teamId) {
+    const mid = currentMemberId();
+    const team = S.teams().find(t=>t.id===teamId);
+    if (!team || team.adminId!==mid) return '';
+    const grants = S.memberGrants(teamId);
+    const noGrant = team.memberIds.filter(id=>id!==mid&&(!grants[id]||!Object.values(grants[id]).some(Boolean)));
+    if (!noGrant.length) return '';
+    return `<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92400E;"><i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i><strong>${noGrant.map(memberDisplayName).join(', ')}</strong> ainda não compartilharam registros com você.</div>`;
+}
+
+function renderEquipePedidos() {
+    const box = document.getElementById('equipe-section-pedidos');
+    if (!box) return;
+    const teamId = equipeActiveTeamId;
+    const items = equipeVisibleItems('pedidos', teamId);
+    const cmap = new Map(S.clients().map(c=>[c.id,c]));
+    const mid = currentMemberId();
+    const STATUS_COLOR = {orcamento:'#FEF9C3',aprovado:'#DCFCE7',faturado:'#DBEAFE',cancelado:'#FEE2E2'};
+    const STATUS_LABEL = {orcamento:'Orçamento',aprovado:'Aprovado',faturado:'Faturado',cancelado:'Cancelado'};
+    box.innerHTML = equipeGrantsInfo(teamId) + (items.length===0
+        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:40px 0;"><i class="fas fa-file-invoice-dollar" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3;"></i>Nenhum pedido visível da equipe.</p>`
+        : `<div style="display:flex;flex-direction:column;gap:8px;">
+            ${items.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).map(o=>{
+                const c = cmap.get(o.clientId);
+                const ownerId = o.ownerId||'u1';
+                const isMine = ownerId===mid;
+                return `<div class="card" style="padding:13px 14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px;">
+                                <span class="member-dot" style="background:${memberColor(ownerId)};"></span>
+                                <span style="font-size:13px;font-weight:700;color:#1D1D1F;">${c?c.nomeFantasia:'—'}</span>
+                                <span class="badge" style="background:${STATUS_COLOR[o.status]||'#F5F5F7'};color:#3A3A3C;">${STATUS_LABEL[o.status]||o.status}</span>
+                                ${!isMine?`<span class="badge" style="background:#F5F5F7;color:#6E6E73;">${memberDisplayName(ownerId)}</span>`:''}
+                            </div>
+                            <div style="font-size:12px;color:#86868B;">${fmtDateBR(o.createdAt||o.deliveryDate)} · ${o.items?o.items.length:0} iten${o.items&&o.items.length!==1?'s':'s'}</div>
+                        </div>
+                        <div style="font-size:15px;font-weight:800;color:#15803D;white-space:nowrap;">${fmtMoney(o.total||0)}</div>
+                    </div>
+                </div>`;
+            }).join('')}
+          </div>`);
+}
+
+function renderEquipeVisitas() {
+    const box = document.getElementById('equipe-section-visitas');
+    if (!box) return;
+    const teamId = equipeActiveTeamId;
+    const items = equipeVisibleItems('visitas', teamId);
+    const cmap = new Map(S.clients().map(c=>[c.id,c]));
+    const mid = currentMemberId();
+    const ST_COLOR = {agendada:'#DBEAFE',realizada:'#DCFCE7',cancelada:'#FEE2E2'};
+    const ST_LABEL = {agendada:'Agendada',realizada:'Realizada',cancelada:'Cancelada'};
+    box.innerHTML = equipeGrantsInfo(teamId) + (items.length===0
+        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:40px 0;"><i class="fas fa-location-dot" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3;"></i>Nenhuma visita visível da equipe.</p>`
+        : `<div style="display:flex;flex-direction:column;gap:8px;">
+            ${items.sort((a,b)=>b.date.localeCompare(a.date)).map(v=>{
+                const c = cmap.get(v.clientId);
+                const ownerId = v.ownerId||'u1';
+                const isMine = ownerId===mid;
+                return `<div class="card" style="padding:12px 14px;border-left:3px solid #16A34A;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+                                <span class="member-dot" style="background:${memberColor(ownerId)};"></span>
+                                <span style="font-size:13px;font-weight:700;color:#1D1D1F;">${c?c.nomeFantasia:'Cliente removido'}</span>
+                                <span class="badge" style="background:${ST_COLOR[v.status]||'#F5F5F7'};color:#3A3A3C;">${ST_LABEL[v.status]||v.status}</span>
+                            </div>
+                            <div style="font-size:12px;color:#86868B;">${fmtDateBR(v.date+'T00:00:00')}${!isMine?' · '+memberDisplayName(ownerId):''}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+          </div>`);
+}
+
+function renderEquipeLeads() {
+    const box = document.getElementById('equipe-section-leads');
+    if (!box) return;
+    const teamId = equipeActiveTeamId;
+    const items = equipeVisibleItems('leads', teamId);
+    const mid = currentMemberId();
+    const ST_COLOR = {novo:'#DBEAFE',contatado:'#FEF9C3',proposta:'#EDE9FE',ganho:'#DCFCE7',perdido:'#FEE2E2'};
+    const ST_LABEL = {novo:'Novo',contatado:'Contatado',proposta:'Proposta',ganho:'Ganho',perdido:'Perdido'};
+    box.innerHTML = equipeGrantsInfo(teamId) + (items.length===0
+        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:40px 0;"><i class="fas fa-bolt" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3;"></i>Nenhum lead visível da equipe.</p>`
+        : `<div style="display:flex;flex-direction:column;gap:8px;">
+            ${items.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).map(l=>{
+                const ownerId = l.ownerId||'u1';
+                const isMine = ownerId===mid;
+                return `<div class="card" style="padding:12px 14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+                                <span class="member-dot" style="background:${memberColor(ownerId)};"></span>
+                                <span style="font-size:13px;font-weight:700;color:#1D1D1F;">${l.name||l.empresa||'Lead'}</span>
+                                <span class="badge" style="background:${ST_COLOR[l.status]||'#F5F5F7'};color:#3A3A3C;">${ST_LABEL[l.status]||l.status}</span>
+                            </div>
+                            <div style="font-size:12px;color:#86868B;">${l.empresa?l.empresa+' · ':''}${!isMine?memberDisplayName(ownerId):'Você'}${l.value?' · '+fmtMoney(l.value):''}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+          </div>`);
+}
+
+function renderEquipeClientes() {
+    const box = document.getElementById('equipe-section-clientes');
+    if (!box) return;
+    const teamId = equipeActiveTeamId;
+    const items = equipeVisibleItems('clientes', teamId);
+    const mid = currentMemberId();
+    box.innerHTML = equipeGrantsInfo(teamId) + (items.length===0
+        ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:40px 0;"><i class="fas fa-store" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3;"></i>Nenhum cliente visível da equipe.</p>`
+        : `<div style="display:flex;flex-direction:column;gap:8px;">
+            ${items.sort((a,b)=>(a.nomeFantasia||'').localeCompare(b.nomeFantasia||'')).map(c=>{
+                const ownerId = c.ownerId||'u1';
+                const isMine = ownerId===mid;
+                return `<div class="card" style="padding:12px 14px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:${memberColor(ownerId)}22;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:${memberColor(ownerId)};flex-shrink:0;">${(c.nomeFantasia||'?')[0]}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:700;color:#1D1D1F;">${c.nomeFantasia}</div>
+                            <div style="font-size:11px;color:#86868B;">${c.segmento||''}${c.segmento&&!isMine?' · ':''}${!isMine?memberDisplayName(ownerId):''}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+          </div>`);
+}
 
 function renderEquipeDashboard() {
     const team = S.teams().find(t=>t.id===equipeActiveTeamId);
@@ -1893,15 +2415,11 @@ function renderEquipeDashboard() {
     const avgPct = Math.round(members.reduce((s,m)=>s+m.pct,0)/members.length) || 0;
 
     document.getElementById('equipe-team-header').innerHTML = `
-        <div>
+        <div style="flex:1;min-width:0;">
             <h2 style="font-size:18px;font-weight:800;color:#1D1D1F;margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${team.name} ${isAdmin?'<span class="badge" style="background:#F0FDF4;color:#15803D;">Você é admin</span>':''}</h2>
             <div style="font-size:12px;color:#86868B;margin-top:2px;">${team.memberIds.length} membro${team.memberIds.length!==1?'s':''} · criada em ${fmtDateBR(team.createdAt||new Date().toISOString())}</div>
         </div>
-        ${isAdmin ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button onclick="renameTeam('${team.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;"><i class="fas fa-pen"></i> Renomear</button>
-            <button onclick="openTeamInvite('${team.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#16A34A;border-color:#BBF7D0;"><i class="fas fa-user-plus"></i> Convidar</button>
-            <button onclick="deleteTeam('${team.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#DC2626;border-color:#FECACA;"><i class="fas fa-trash"></i> Excluir</button>
-        </div>` : ''}
+        ${isAdmin ? `<button onclick="openTeamInvite('${team.id}')" class="btn-s" style="width:auto;padding:9px 14px;font-size:12px;color:#16A34A;border-color:#BBF7D0;flex-shrink:0;"><i class="fas fa-user-plus"></i> Convidar</button>` : ''}
     `;
 
     document.getElementById('equipe-totals').innerHTML = `
@@ -1947,27 +2465,7 @@ function renderEquipeDashboard() {
     } else { invitesBox.style.display = 'none'; invitesBox.innerHTML=''; }
 
     const permsBox = document.getElementById('equipe-perms');
-    if (isAdmin) {
-        permsBox.style.display = 'block';
-        const teamPerms = S.teamPerms()[team.id] || {};
-        permsBox.innerHTML = `<div class="slabel">Permissões — o que cada membro pode ver dos outros</div>
-            <p style="font-size:11px;color:#86868B;margin:-4px 0 10px;">Defina, por membro, quem ele pode acompanhar em cada área da plataforma.</p>` +
-            team.memberIds.filter(id=>id!==team.adminId).map(viewerId=>{
-                const vperms = teamPerms[viewerId] || {};
-                return `<div class="card" style="padding:12px 14px;margin-bottom:8px;">
-                    <div style="font-size:13px;font-weight:700;color:#1D1D1F;margin-bottom:10px;">${memberDisplayName(viewerId)}</div>
-                    ${PERM_CATEGORIES.map(cat=>{
-                        const allowed = vperms[cat.key] || [viewerId];
-                        return `<div style="margin-bottom:8px;">
-                            <div style="font-size:11px;color:#6E6E73;font-weight:600;margin-bottom:5px;"><i class="${cat.icon}" style="width:13px;"></i> ${cat.label}</div>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                                ${team.memberIds.map(targetId=>`<button class="member-chip ${allowed.includes(targetId)?'active':''}" onclick="toggleTeamPerm('${team.id}','${viewerId}','${targetId}','${cat.key}')" ${targetId===viewerId?'disabled':''}><span class="member-dot" style="background:${memberColor(targetId)};"></span>${memberDisplayName(targetId)}</button>`).join('')}
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>`;
-            }).join('');
-    } else { permsBox.style.display = 'none'; permsBox.innerHTML=''; }
+    if (permsBox) { permsBox.style.display = 'none'; permsBox.innerHTML = ''; }
 
     const activityBox = document.getElementById('equipe-activity');
     if (activityBox) {
@@ -2055,18 +2553,40 @@ function openJoinTeamModal() {
     const list = joinableTeams();
     document.getElementById('jt-list').innerHTML = list.length===0
         ? `<p style="font-size:13px;color:#86868B;text-align:center;padding:16px 0;">Nenhuma outra equipe disponível para entrar agora.</p>`
-        : list.map(t=>`<div class="mini-row"><div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">${t.name}</div><div style="font-size:11px;color:#86868B;">${t.memberIds.length} membros · admin: ${memberDisplayName(t.adminId)}</div></div><button onclick="joinTeam('${t.id}')" class="btn-p" style="width:auto;padding:8px 14px;font-size:12px;"><i class="fas fa-right-to-bracket"></i> Entrar</button></div>`).join('');
+        : list.map(t=>`<div class="mini-row"><div><div style="font-size:13px;font-weight:700;color:#1D1D1F;">${t.name}</div><div style="font-size:11px;color:#86868B;">${t.memberIds.length} membros · admin: ${memberDisplayName(t.adminId)}</div></div><button onclick="openJoinPerms('${t.id}')" class="btn-p" style="width:auto;padding:8px 14px;font-size:12px;"><i class="fas fa-right-to-bracket"></i> Entrar</button></div>`).join('');
     document.getElementById('modal-join-team').classList.add('show');
 }
 function closeJoinTeamModal() { document.getElementById('modal-join-team').classList.remove('show'); }
-function joinTeam(teamId) {
+
+function openJoinPerms(teamId) {
+    const team = S.teams().find(t=>t.id===teamId);
+    if (!team) return;
+    closeJoinTeamModal();
+    document.getElementById('jp-team-id').value = teamId;
+    document.getElementById('jp-team-info').textContent = `Equipe: ${team.name} · Admin: ${memberDisplayName(team.adminId)}`;
+    ['pedidos','visitas','leads','clientes'].forEach(k=>{
+        const cb = document.getElementById('jp-'+k);
+        if (cb) cb.checked = false;
+    });
+    document.getElementById('modal-join-perms').classList.add('show');
+}
+function closeJoinPerms() { document.getElementById('modal-join-perms').classList.remove('show'); }
+
+function confirmJoinTeam(useChecked) {
+    const teamId = document.getElementById('jp-team-id').value;
     const mid = currentMemberId();
     S.setTeams(S.teams().map(t=>t.id===teamId && !t.memberIds.includes(mid) ? {...t, memberIds:[...t.memberIds, mid]} : t));
     const perms = S.teamPerms();
     perms[teamId] = perms[teamId] || {};
     perms[teamId][mid] = perms[teamId][mid] || { tarefas:[mid], clientes:[mid], visitas:[mid] };
     S.setTeamPerms(perms);
-    closeJoinTeamModal();
+    if (useChecked) {
+        const grants = S.memberGrants(teamId);
+        grants[mid] = {};
+        ['pedidos','visitas','leads','clientes'].forEach(k=>{ grants[mid][k] = document.getElementById('jp-'+k)?.checked||false; });
+        S.setMemberGrants(teamId, grants);
+    }
+    closeJoinPerms();
     equipeActiveTeamId = teamId;
     tfVisibleMembers = null;
     toast('Você entrou na equipe!');
@@ -2089,7 +2609,158 @@ function toggleTeamPerm(teamId, viewerId, targetId, category) {
     perms[teamId][viewerId][category] = next;
     S.setTeamPerms(perms);
     tfVisibleMembers = null;
-    renderEquipeDashboard();
+    renderEquipeSection();
+}
+
+let equipeSettingsTab = 'perms';
+
+function openEquipeSettings() {
+    const team = S.teams().find(t=>t.id===equipeActiveTeamId);
+    if (!team) return;
+    const mid = currentMemberId();
+    const defaultTab = team.adminId===mid ? 'perms' : 'sharing';
+    document.getElementById('eq-settings-team-name').textContent = team.name;
+    document.getElementById('modal-equipe-settings').classList.add('show');
+    switchEquipeTab(defaultTab);
+}
+
+function closeEquipeSettings() {
+    document.getElementById('modal-equipe-settings').classList.remove('show');
+}
+
+function switchEquipeTab(tab) {
+    equipeSettingsTab = tab;
+    ['perms','goals','sharing'].forEach(t=>{
+        const btn = document.getElementById('eq-tab-'+t);
+        const pnl = document.getElementById('eq-settings-'+t);
+        if (btn) btn.classList.toggle('active', t===tab);
+        if (pnl) pnl.style.display = t===tab ? 'block' : 'none';
+    });
+    renderEquipeSettings();
+}
+
+function renderEquipeSettings() {
+    const team = S.teams().find(t=>t.id===equipeActiveTeamId);
+    if (!team) return;
+    const mid = currentMemberId();
+    const isAdmin = team.adminId === mid;
+
+    if (equipeSettingsTab === 'perms') {
+        const permsBox = document.getElementById('eq-settings-perms');
+        if (!isAdmin) {
+            permsBox.innerHTML = `<p style="font-size:13px;color:#86868B;text-align:center;padding:20px 0;">Somente o administrador pode ajustar as permissões.</p>`;
+            return;
+        }
+        const teamPerms = S.teamPerms()[team.id] || {};
+        permsBox.innerHTML = `<p style="font-size:12px;color:#86868B;margin:0 0 14px;line-height:1.5;">Defina, para cada membro, quais outros membros ele pode acompanhar em cada área.</p>` +
+            team.memberIds.filter(id=>id!==team.adminId).map(viewerId=>{
+                const vperms = teamPerms[viewerId] || {};
+                return `<div class="card" style="padding:12px 14px;margin-bottom:8px;">
+                    <div style="font-size:13px;font-weight:700;color:#1D1D1F;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span class="member-dot" style="background:${memberColor(viewerId)};"></span>${memberDisplayName(viewerId)}</div>
+                    ${PERM_CATEGORIES.map(cat=>{
+                        const allowed = vperms[cat.key] || [viewerId];
+                        return `<div style="margin-bottom:8px;">
+                            <div style="font-size:11px;color:#6E6E73;font-weight:600;margin-bottom:5px;"><i class="${cat.icon}" style="width:13px;"></i> ${cat.label}</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                ${team.memberIds.map(targetId=>`<button class="member-chip ${allowed.includes(targetId)?'active':''}" onclick="toggleTeamPerm('${team.id}','${viewerId}','${targetId}','${cat.key}');renderEquipeSettings()" ${targetId===viewerId?'disabled':''}><span class="member-dot" style="background:${memberColor(targetId)};"></span>${memberDisplayName(targetId)}</button>`).join('')}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+            }).join('') +
+            `<div style="margin-top:18px;padding-top:14px;border-top:1px solid #E5E5EA;display:flex;gap:10px;">
+                <button onclick="renameTeam('${team.id}')" class="btn-s" style="width:auto;padding:10px 16px;font-size:13px;flex:1;"><i class="fas fa-pen"></i> Renomear equipe</button>
+                <button onclick="deleteTeam('${team.id}')" class="btn-s" style="width:auto;padding:10px 16px;font-size:13px;flex:1;color:#DC2626;border-color:#FECACA;"><i class="fas fa-trash"></i> Excluir equipe</button>
+            </div>`;
+    } else if (equipeSettingsTab === 'sharing') {
+        const sharingBox = document.getElementById('eq-settings-sharing');
+        const mid = currentMemberId();
+        const grants = S.memberGrants(team.id);
+        const myGrants = grants[mid] || {};
+        const CATS = [
+            {key:'pedidos',  label:'Meus pedidos',    icon:'fas fa-file-invoice-dollar'},
+            {key:'visitas',  label:'Minhas visitas',  icon:'fas fa-location-dot'},
+            {key:'leads',    label:'Meus leads',      icon:'fas fa-bolt'},
+            {key:'clientes', label:'Minha carteira',  icon:'fas fa-store'},
+        ];
+        sharingBox.innerHTML = `<p style="font-size:12px;color:#86868B;margin:0 0 14px;line-height:1.5;">Controle o que o admin <strong>${memberDisplayName(team.adminId)}</strong> pode ver dos seus registros nesta equipe.</p>` +
+            CATS.map(cat=>`<label style="display:flex;align-items:center;gap:12px;padding:12px;background:#F5F5F7;border-radius:12px;cursor:pointer;margin-bottom:8px;">
+                <input type="checkbox" id="eqs-${cat.key}" ${myGrants[cat.key]?'checked':''} style="width:17px;height:17px;accent-color:#16A34A;">
+                <div><div style="font-size:13px;font-weight:600;color:#1D1D1F;"><i class="${cat.icon}" style="color:#16A34A;margin-right:6px;"></i>${cat.label}</div></div>
+            </label>`).join('') +
+            `<button class="btn-p" onclick="saveMemberSharing('${team.id}')"><i class="fas fa-check"></i>Salvar preferências</button>`;
+    } else {
+        const goalsBox = document.getElementById('eq-settings-goals');
+        const memberGoals = S.memberGoals(team.id);
+        const globalGoals = S.goals();
+        if (!isAdmin) {
+            goalsBox.innerHTML = `<p style="font-size:13px;color:#86868B;text-align:center;padding:20px 0;">Somente o administrador pode ajustar as metas.</p>`;
+            return;
+        }
+        goalsBox.innerHTML = `<p style="font-size:12px;color:#86868B;margin:0 0 14px;line-height:1.5;">Defina metas individuais de faturamento e visitas para cada membro. Deixe em branco para usar a meta global.</p>` +
+            `<div class="card" style="padding:12px 14px;margin-bottom:14px;border:1.5px solid #BBF7D0;">
+                <div style="font-size:12px;font-weight:700;color:#1D1D1F;margin-bottom:8px;"><i class="fas fa-sack-dollar" style="color:#16A34A;margin-right:6px;"></i>Pedido mínimo da equipe</div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input class="inp" id="mg-minorder" type="number" min="0" step="10" value="${team.minOrder||''}" placeholder="Sem mínimo definido" style="flex:1;">
+                    <span style="font-size:12px;color:#86868B;white-space:nowrap;">R$ / pedido</span>
+                </div>
+                <p style="font-size:11px;color:#86868B;margin:6px 0 0;line-height:1.5;">Quando definido, exibe um indicador no novo pedido informando se o valor está abaixo do mínimo.</p>
+            </div>` +
+            team.memberIds.map(id=>{
+                const mg = memberGoals[id] || {};
+                return `<div class="card" style="padding:12px 14px;margin-bottom:8px;">
+                    <div style="font-size:13px;font-weight:700;color:#1D1D1F;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span class="member-dot" style="background:${memberColor(id)};"></span>${memberDisplayName(id)}${id===team.adminId?' <span style="font-size:10px;color:#16A34A;font-weight:600;">(admin)</span>':''}</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div><label class="lbl">Meta de faturamento (R$)</label><input class="inp" id="mg-rev-${id}" type="number" min="0" value="${mg.revenueTarget||''}" placeholder="${globalGoals.revenueTarget} (global)"></div>
+                        <div><label class="lbl">Meta de visitas</label><input class="inp" id="mg-vis-${id}" type="number" min="0" value="${mg.visitsTarget||''}" placeholder="${globalGoals.visitsTarget} (global)"></div>
+                    </div>
+                </div>`;
+            }).join('') +
+            `<button class="btn-p" onclick="saveMemberGoals('${team.id}')"><i class="fas fa-check"></i>Salvar metas individuais</button>`;
+    }
+}
+
+function saveMemberGoals(teamId) {
+    const team = S.teams().find(t=>t.id===teamId);
+    if (!team) return;
+    const goals = {};
+    team.memberIds.forEach(id=>{
+        const rev = parseFloat(document.getElementById('mg-rev-'+id)?.value);
+        const vis = parseInt(document.getElementById('mg-vis-'+id)?.value);
+        if (!isNaN(rev) || !isNaN(vis)) {
+            goals[id] = {};
+            if (!isNaN(rev)) goals[id].revenueTarget = rev;
+            if (!isNaN(vis)) goals[id].visitsTarget = vis;
+        }
+    });
+    S.setMemberGoals(teamId, goals);
+    const minOrderVal = parseFloat(document.getElementById('mg-minorder')?.value);
+    S.setTeams(S.teams().map(t=>t.id===teamId ? {...t, minOrder: isNaN(minOrderVal) ? 0 : minOrderVal} : t));
+    toast('Metas e configurações salvas!');
+    loadEquipe();
+}
+
+function saveMemberSharing(teamId) {
+    const mid = currentMemberId();
+    const grants = S.memberGrants(teamId);
+    grants[mid] = {
+        pedidos:  document.getElementById('eqs-pedidos')?.checked||false,
+        visitas:  document.getElementById('eqs-visitas')?.checked||false,
+        leads:    document.getElementById('eqs-leads')?.checked||false,
+        clientes: document.getElementById('eqs-clientes')?.checked||false,
+    };
+    S.setMemberGrants(teamId, grants);
+    toast('Preferências de compartilhamento salvas!');
+    renderEquipeSection();
+}
+
+function memberGoalForId(id) {
+    const teams = myTeams();
+    for (const t of teams) {
+        const mg = S.memberGoals(t.id);
+        if (mg[id]) return mg[id];
+    }
+    return null;
 }
 
 function allowedMemberIds(category) {
@@ -2107,9 +2778,9 @@ function allowedMemberIds(category) {
 }
 
 function visibleClients() {
-    if (!currentMemberId()) return S.clients();
-    const allowed = allowedMemberIds('clientes');
-    return S.clients().filter(c=>allowed.includes(c.ownerId));
+    const mid = currentMemberId();
+    if (!mid) return S.clients();
+    return S.clients().filter(c=>c.ownerId===mid);
 }
 
 // ======================
@@ -2190,8 +2861,7 @@ let leadChip = 'all';
 function visibleLeads() {
     const mid = currentMemberId();
     if (!mid) return S.leads();
-    const allowed = allowedMemberIds('clientes');
-    return S.leads().filter(l=>allowed.includes(l.ownerId||'u1'));
+    return S.leads().filter(l=>(l.ownerId||'u1')===mid);
 }
 
 function loadLeads() {
@@ -2785,8 +3455,7 @@ function visibleOrders() {
     const mid = currentMemberId();
     const all = S.orders().filter(o=>!o.deletedAt);
     if (!mid) return all;
-    const allowed = allowedMemberIds('clientes');
-    return all.filter(o=>allowed.includes(o.ownerId));
+    return all.filter(o=>o.ownerId===mid);
 }
 
 function trashedOrders() {

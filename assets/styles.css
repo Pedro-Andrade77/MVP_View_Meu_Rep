@@ -6,6 +6,11 @@
    espaço em branco.
    ============================================================ */
 :root {
+    --cal-visit-bg: #DBEAFE;
+    --cal-visit-text: #1D4ED8;
+    --cal-task-bg: #DCFCE7;
+    --cal-task-text: #15803D;
+
     --green-900: #052E16;
     --green-700: #14532D;
     --green-600: #15803D;
@@ -220,12 +225,17 @@ body { font-family: 'Inter', sans-serif; background: var(--surface); margin: 0; 
 .member-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; vertical-align: middle; }
 
 /* ---------- Calendário estilo Teams (barras de evento por dia) ---------- */
-.cal-cell { border-radius: 10px; border: 1.5px solid transparent; background: white; cursor: pointer; display: flex; flex-direction: column; padding: 4px; gap: 2px; min-height: 64px; font-family: 'Inter', sans-serif; text-align: left; overflow: hidden; }
+.cal-cell { border-radius: 10px; border: 1.5px solid transparent; background: white; cursor: pointer; display: flex; flex-direction: column; padding: 5px 4px; gap: 3px; min-height: 82px; font-family: 'Inter', sans-serif; text-align: left; overflow: hidden; }
 .cal-cell.today { background: var(--green-50); border-color: var(--green-200, #BBF7D0); }
 .cal-cell.selected { border-color: var(--green-500); box-shadow: 0 0 0 2px rgba(22,163,74,0.15); }
-.cal-cell .cal-daynum { font-size: 11px; font-weight: 800; color: var(--ink); }
-.cal-evt { font-size: 9px; font-weight: 700; color: white; border-radius: 4px; padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-evt-more { font-size: 9px; font-weight: 700; color: var(--ink-4); }
+.cal-cell .cal-daynum { font-size: 13px; font-weight: 800; color: var(--ink); line-height: 1.2; }
+.cal-cell.today .cal-daynum { color: #16A34A; }
+.cal-evt { font-size: 9px; font-weight: 700; border-radius: 5px; padding: 2px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 3px; }
+.cal-evt-visit { background: var(--cal-visit-bg); color: var(--cal-visit-text); }
+.cal-evt-task  { background: var(--cal-task-bg); color: var(--cal-task-text); }
+.cal-evt-done  { background: #E5E5EA; color: #6E6E73; text-decoration: line-through; }
+.cal-evt-more  { font-size: 9px; font-weight: 700; color: var(--ink-4); padding: 1px 3px; }
+.cal-avatar { width: 12px; height: 12px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 6px; font-weight: 800; color: white; flex-shrink: 0; }
 
 /* ---------- KPI tile (indicadores elaborados) ---------- */
 .kpi { background: white; border-radius: var(--r-lg); padding: 18px; box-shadow: var(--e2); }
